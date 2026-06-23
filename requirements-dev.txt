@@ -1,0 +1,11 @@
+# Development / CI dependencies for the General TEA tool.
+#
+# The pipeline is designed to run on a bare Python 3 standard library: every
+# script reads tea-schema.json through scripts/lib/schema.py, which falls back
+# to a built-in structural validator when jsonschema is absent.
+#
+# jsonschema is OPTIONAL but RECOMMENDED. When installed, lib/schema.py
+# validates configs against the authoritative declarative contract
+# (templates/tea-schema.schema.json) instead of the built-in mirror, and the
+# test suite exercises the JSON Schema directly. Install it for development/CI:
+jsonschema>=4

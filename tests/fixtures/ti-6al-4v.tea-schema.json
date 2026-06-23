@@ -1,0 +1,191 @@
+{
+  "schema_version": "1.0",
+  "tea_id": "ti-6al-4v-incumbent",
+  "display_name": "Ti-6Al-4V Incumbent Chain",
+  "vocabulary": { "entity": "process unit", "parameter": "field" },
+  "functional_unit": { "name": "kg Ti-6Al-4V billet", "symbol": "kg billet" },
+  "basis": {
+    "currency": "USD",
+    "base_year": 2025,
+    "inflation_index": "CEPCI",
+    "geography": "US"
+  },
+  "quality_tags": ["A", "B", "C", "D", "E"],
+
+  "entities": [
+    {
+      "id": "1A", "name": "Chlorination", "output": "TiCl4",
+      "description": "rutile (TiO2) + carbon + Cl2 -> TiCl4 in a fluidized-bed reactor",
+      "scope_frame": {
+        "in_scope": "Fluidized-bed carbochlorination of chloride-grade TiO2 (rutile) with petroleum coke and Cl2 to metal-grade TiCl4, recycling Cl2 from MgCl2 electrolysis.",
+        "known_out_of_scope": ["FFC-Cambridge / OS / MER direct electro-reduction of TiO2", "sulfate-route TiO2 pigment processing", "plasma-quench chlorination"]
+      },
+      "estimation_policy": "first_principles_only"
+    },
+    {
+      "id": "1B", "name": "Kroll Process", "output": "Ti sponge",
+      "description": "TiCl4 + Mg -> Ti sponge + MgCl2",
+      "scope_frame": {
+        "in_scope": "Kroll magnesiothermic reduction of purified TiCl4 by molten Mg under argon, with vacuum distillation of the sponge.",
+        "known_out_of_scope": ["Hunter (sodium-reduction) process", "FFC-Cambridge / OS / MER / Armstrong / TiRO", "molten-salt electrowinning of titanium"]
+      },
+      "estimation_policy": "first_principles_only"
+    },
+    {
+      "id": "1C", "name": "MgCl2 Electrolysis", "output": "Mg",
+      "description": "MgCl2 -> Mg + Cl2 (reagent regeneration)",
+      "scope_frame": {
+        "in_scope": "Industrial molten-salt electrolysis of anhydrous spent MgCl2 from Kroll retorts, returning Mg to 1B and Cl2 to 1A.",
+        "known_out_of_scope": ["Pidgeon (silicothermic) thermal magnesium", "solid-oxide-membrane (SOM) electrolysis", "carbothermic MgO reduction"]
+      },
+      "estimation_policy": "comparables_first"
+    },
+    {
+      "id": "2A", "name": "Bayer Process", "output": "alumina (Al2O3)",
+      "description": "bauxite + NaOH -> alumina",
+      "scope_frame": {
+        "in_scope": "Bayer digestion of bauxite in hot caustic soda, precipitation of Al(OH)3, and calcination to smelter-grade alumina.",
+        "known_out_of_scope": ["sinter / lime-soda alumina process", "acid-leach alumina from clay/kaolin/fly ash", "Pedersen process"]
+      },
+      "estimation_policy": "first_principles_only"
+    },
+    {
+      "id": "2B", "name": "Hall-Heroult Electrolysis", "output": "Al metal",
+      "description": "alumina -> Al metal",
+      "scope_frame": {
+        "in_scope": "Hall-Heroult electrolysis of alumina in molten cryolite at consumable carbon anodes (incumbent prebake / point-feed cell variants).",
+        "known_out_of_scope": ["inert-anode smelting (e.g. ELYSIS)", "carbothermic aluminum reduction", "chloride electrolysis of AlCl3"]
+      },
+      "estimation_policy": "first_principles_only"
+    },
+    {
+      "id": "4", "name": "Electrode Compaction & Welding", "output": "consumable electrode",
+      "description": "Ti sponge + Al + Al-V master alloy -> consumable VAR electrode",
+      "scope_frame": {
+        "in_scope": "Virgin-feed charge of Ti sponge, Al-V master alloy, and pure Al pressed and plasma/TIG-welded under inert atmosphere into a consumable VAR electrode.",
+        "known_out_of_scope": ["wire-arc additive manufacturing (WAAM)", "blended-elemental / pre-alloyed powder-metallurgy / HIP", "scrap/revert-dominant electrode preparation"]
+      },
+      "estimation_policy": "comparables_first"
+    },
+    {
+      "id": "5", "name": "Double VAR Melt", "output": "VAR ingot",
+      "description": "consumable electrode -> VAR ingot (Al evaporation loss is real)",
+      "scope_frame": {
+        "in_scope": "Double vacuum arc remelting of the consumable electrode into a homogenized aerospace-grade Ti-6Al-4V ingot.",
+        "known_out_of_scope": ["triple VAR", "electron-beam cold-hearth melting (EBCHM)", "plasma arc melting (PAM)", "single VAR"]
+      },
+      "estimation_policy": "comparables_first"
+    },
+    {
+      "id": "6", "name": "Press Forge to Billet", "output": "wrought billet",
+      "description": "VAR ingot -> wrought billet",
+      "scope_frame": {
+        "in_scope": "Hot working / ingot breakdown of the VAR ingot into wrought Ti-6Al-4V billet by open-die press forging.",
+        "known_out_of_scope": ["wire-arc additive manufacturing (WAAM)", "near-net-shape powder-metallurgy or additive manufacturing", "ShAPE extrusion of recycled chips"]
+      },
+      "estimation_policy": "comparables_first"
+    }
+  ],
+
+  "parameters": [
+    {
+      "id": "specific_capex", "label": "Specific CapEx", "rule_type": "CAPEX",
+      "applies_to": "all", "first_class": true,
+      "capex_form": "specific_per_annual_output",
+      "description": "Capital cost per annual tonne of entity output, carried to source-year USD (no escalation at normalize time)."
+    },
+    {
+      "id": "scaling_exponent", "label": "Scaling exponent", "rule_type": "PASSTHROUGH",
+      "applies_to": "all",
+      "description": "Six-tenths-style scale exponent; carried from conventions/scaling-exponents.csv, not searched per cell."
+    },
+    {
+      "id": "electricity", "label": "Electricity", "rule_type": "INTENSITY",
+      "numerator_units": "kWh", "per": "entity_output", "applies_to": "all", "first_class": true
+    },
+    {
+      "id": "thermal_energy", "label": "Thermal energy", "rule_type": "INTENSITY",
+      "numerator_units": "MJ", "per": "entity_output", "applies_to": "all", "first_class": true
+    },
+    {
+      "id": "feedstock_quantity", "label": "Feedstock quantity", "rule_type": "INTENSITY",
+      "numerator_units": "kg", "per": "entity_output", "applies_to": "all"
+    },
+    {
+      "id": "stoichiometry", "label": "Stoichiometry", "rule_type": "JSON",
+      "applies_to": ["1A", "1B", "1C", "2A", "2B"],
+      "description": "Structured reaction stoichiometry; no numeric normalization."
+    },
+    {
+      "id": "output_notes", "label": "Output / co-product notes", "rule_type": "TEXT",
+      "applies_to": "all"
+    },
+    {
+      "id": "consumables.cl2_makeup", "label": "Cl2 make-up", "rule_type": "INTENSITY",
+      "numerator_units": "kg", "per": "entity_output", "applies_to": ["1A"]
+    },
+    {
+      "id": "consumables.argon", "label": "Argon", "rule_type": "INTENSITY",
+      "numerator_units": "kg", "per": "entity_output", "applies_to": ["1B", "5"]
+    },
+    {
+      "id": "Ti_yield", "label": "Ti yield", "rule_type": "FRACTION",
+      "basis": "element-of-interest", "applies_to": ["1A", "1B", "4", "5", "6"]
+    },
+    {
+      "id": "Al_yield", "label": "Al yield", "rule_type": "FRACTION",
+      "basis": "element-of-interest", "applies_to": ["2A", "2B", "4", "5", "6"]
+    },
+    {
+      "id": "V_yield", "label": "V yield", "rule_type": "FRACTION",
+      "basis": "element-of-interest", "applies_to": ["4", "5", "6"]
+    },
+    {
+      "id": "Mg_recovery", "label": "Mg recovery", "rule_type": "FRACTION",
+      "basis": "element-of-interest", "applies_to": ["1C"]
+    },
+    {
+      "id": "Cl2_recovery", "label": "Cl2 recovery", "rule_type": "FRACTION",
+      "basis": "element-of-interest", "applies_to": ["1C"]
+    },
+    {
+      "id": "electricity_price", "label": "Industrial electricity price",
+      "rule_type": "MONETARY", "context_free": true, "reference_value": true,
+      "scope": "global", "canonical_unit": "USD/kWh", "market_basis": "US industrial bulk"
+    },
+    {
+      "id": "natural_gas_price", "label": "Industrial natural gas price",
+      "rule_type": "MONETARY", "context_free": true, "reference_value": true,
+      "scope": "global", "canonical_unit": "USD/MMBtu", "market_basis": "US industrial"
+    },
+    {
+      "id": "al_v_master_alloy_price", "label": "Al-V master alloy price",
+      "rule_type": "MONETARY", "context_free": true, "reference_value": true,
+      "scope": "global", "canonical_unit": "USD/kg", "market_basis": "spot, ~85V/15Al master alloy"
+    }
+  ],
+
+  "estimation": {
+    "comparable_rubric": {
+      "dimensions": ["mechanism", "cost_driver", "scale", "temperature_atmosphere", "product_form_factor"],
+      "hard_rule": "mechanism == match; at most one partial among the rest; no mismatch."
+    }
+  },
+
+  "conventions_needed": [
+    "inflation_index:CEPCI",
+    "currency_rates",
+    "unit_conversions",
+    "scaling_exponents"
+  ],
+
+  "validation_targets": [
+    { "metric": "Ti sponge $/kg", "range": [11, 12.5], "unit": "USD/kg", "source": "Argus TG100 Sep-2025" }
+  ],
+
+  "defaults": {
+    "master_list_candidate_cap": 15,
+    "gap_fill_candidate_cap": 5,
+    "extraction_batch_size": 8
+  }
+}

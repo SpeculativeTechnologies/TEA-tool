@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speculative-technologies.example/schemas/search-candidates.schema.json",
+  "title": "TEA Search Candidate JSON",
+  "description": "Structural schema for master-list and gap-fill search outputs. Config-specific entity/parameter cross-reference validation is performed by scripts/lib/search.py.",
+  "type": "object",
+  "required": ["schema_tea_id", "candidates"],
+  "properties": {
+    "schema_tea_id": { "type": "string", "minLength": 1 },
+    "entities_in_scope": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "entity": { "type": "string", "minLength": 1 },
+    "uncovered_parameters_targeted": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "candidate_cap": { "type": "integer", "minimum": 1 },
+    "reference_value_subqueries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/reference_value_subquery" }
+    },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/candidate" }
+    },
+    "coverage_summary": { "$ref": "#/$defs/coverage_summary" },
+    "residual_gap_assessment": { "$ref": "#/$defs/residual_gap_assessment" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "reference_value_subquery": {
+      "type": "object",
+      "required": ["parameter", "query", "rationale"],
+      "properties": {
+        "parameter": { "type": "string", "minLength": 1 },
+        "query": { "type": "string", "minLength": 1 },
+        "rationale": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "candidate": {
+      "type": "object",
+      "required": [
+        "source_key",
+        "title",
+        "authors",
+        "year",
+        "publisher_or_journal",
+        "source_url",
+        "quality_estimate",
+        "access_notes",
+        "field_coverage",
+        "rationale"
+      ],
+      "properties": {
+        "source_key": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "authors": { "type": "string", "minLength": 1 },
+        "year": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "string", "minLength": 1 }
+          ]
+        },
+        "publisher_or_journal": { "type": "string", "minLength": 1 },
+        "source_url": { "type": "string", "minLength": 1 },
+        "doi": { "type": "string" },
+        "quality_estimate": { "type": "string", "minLength": 1 },
+        "access_notes": { "type": "string", "minLength": 1 },
+        "field_coverage": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/coverage_entry" }
+        },
+        "rationale": { "type": "string", "minLength": 1 },
+        "is_retargeting_of_master_list_source": { "type": "boolean" },
+        "retargeting_of_source_key": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "coverage_entry": {
+      "type": "object",
+      "required": ["entity", "parameters"],
+      "properties": {
+        "entity": { "type": "string", "minLength": 1 },
+        "parameters": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "coverage_summary": {
+      "type": "object",
+      "required": [
+        "entities_with_strong_coverage",
+        "entities_with_weak_coverage",
+        "parameters_likely_to_need_gap_fill"
+      ],
+      "properties": {
+        "entities_with_strong_coverage": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "entities_with_weak_coverage": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "parameters_likely_to_need_gap_fill": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/coverage_entry" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "residual_gap_assessment": {
+      "type": "object",
+      "required": ["parameters_still_uncovered_after_this_round", "recommendation"],
+      "properties": {
+        "parameters_still_uncovered_after_this_round": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "recommendation": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

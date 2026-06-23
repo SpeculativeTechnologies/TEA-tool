@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speculative-technologies.local/general-tea-tool/tea-schema.schema.json",
+  "title": "General TEA Tool — tea-schema.json",
+  "description": "Machine-readable contract that Stage 0.1 (LLM compile) emits and every deterministic script reads. No script contains domain constants; they all dispatch off this config. See plan.md §4. This JSON Schema enforces STRUCTURE (types, enums, required core keys). Cross-reference and completeness checks (e.g. applies_to resolving to a real entity, an INTENSITY parameter declaring its numerator units) are layered on top by scripts/lib/schema.py, which surfaces them as hard errors or analyst-facing open questions rather than silent defaults.",
+  "type": "object",
+  "required": [
+    "tea_id",
+    "display_name",
+    "functional_unit",
+    "basis",
+    "quality_tags",
+    "entities",
+    "parameters",
+    "estimation",
+    "conventions_needed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "Version of this contract the config targets. Optional; defaults to \"1.0\".",
+      "type": "string",
+      "default": "1.0"
+    },
+    "tea_id": {
+      "description": "Stable kebab-case identifier for this TEA instance (e.g. 'ti-6al-4v-incumbent').",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "display_name": {
+      "description": "Human-facing name (e.g. 'Ti-6Al-4V Incumbent Chain').",
+      "type": "string",
+      "minLength": 1
+    },
+    "vocabulary": {
+      "description": "Per-TEA display labels for the neutral code terms 'entity' and 'parameter' (D13). Code/config/CSVs always use the neutral terms; these labels are only for human-facing output.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entity": {
+          "type": "string",
+          "minLength": 1,
+          "description": "e.g. 'process unit', 'cost center', 'activity'."
+        },
+        "parameter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "e.g. 'field', 'line item'."
+        }
+      }
+    },
+    "functional_unit": {
+      "description": "The denominator everything is expressed per (drives INTENSITY normalization). e.g. 'kg billet', '1M tokens', 'delivery'.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "symbol": { "type": "string", "minLength": 1 }
+      }
+    },
+    "basis": {
+      "description": "Currency/year/index/geography basis the whole TEA is normalized to.",
+      "type": "object",
+      "required": ["currency", "base_year", "inflation_index"],
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "description": "Base currency, ideally an ISO-4217 code (e.g. 'USD', 'EUR').",
+          "type": "string",
+          "minLength": 1
+        },
+        "base_year": {
+          "description": "Year monetary values are escalated to.",
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2100
+        },
+        "inflation_index": {
+          "description": "Index used to escalate MONETARY values to base_year. 'none' disables escalation.",
+          "type": "string",
+          "enum": ["CEPCI", "CPI", "PPI", "none"]
+        },
+        "geography": {
+          "description": "Geographic basis for prices/markets (e.g. 'US', 'EU').",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "quality_tags": {
+      "description": "Ordered best-to-worst quality classes. Default A/B/C/D/E; E is reserved for estimates (Phase 6) and an analyst override re-tags E->D.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "entities": {
+      "description": "The list of entities (process units / cost centers / activities). Neutral term 'entity' (D13).",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/entity" }
+    },
+    "parameters": {
+      "description": "The parameter catalog. Reference values are parameters with context_free + reference_value (D8); they live under the reserved global entity 'REF', not per real entity.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/parameter" }
+    },
+    "estimation": {
+      "description": "Estimation policy + the comparable-similarity rubric (D9). comparable_rubric is required whenever any entity's estimation_policy is 'comparables_first' or 'either' (enforced by lib/schema.py).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "comparable_rubric": { "$ref": "#/$defs/comparable_rubric" }
+      }
+    },
+    "conventions_needed": {
+      "description": "Declared (or derived) convention dependencies. Stage 0 derives these from the rule-types in use and scaffolds the matching conventions/*.csv. Tokens are free-form but conventionally one of: 'inflation_index:CEPCI|CPI|PPI', 'currency_rates', 'unit_conversions', 'scaling_exponents'.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "validation_targets": {
+      "description": "Optional benchmarks the analyst may use for their own back-cast. The tool records them and surfaces them in the run manifest; it does NOT run the back-cast (D11).",
+      "type": "array",
+      "items": { "$ref": "#/$defs/validation_target" }
+    },
+    "defaults": {
+      "description": "Optional per-run caps/batch sizes. Absent values fall back to Vicky TEA defaults (master-list 15, gap-fill 5, extraction batch 8).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "master_list_candidate_cap": { "type": "integer", "minimum": 1 },
+        "gap_fill_candidate_cap": { "type": "integer", "minimum": 1 },
+        "extraction_batch_size": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "entity": {
+      "type": "object",
+      "required": ["id", "name", "estimation_policy"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Stable entity identifier (e.g. '1A', 'compute_hardware'). Must not be the reserved global id 'REF'.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "not": { "const": "REF" }
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "output": {
+          "description": "What the entity produces (e.g. 'TiCl4'). Required basis for parameters that normalize 'per entity_output'.",
+          "type": "string"
+        },
+        "description": { "type": "string" },
+        "scope_frame": { "$ref": "#/$defs/scope_frame" },
+        "estimation_policy": {
+          "type": "string",
+          "enum": ["comparables_first", "first_principles_only", "either"]
+        }
+      }
+    },
+    "scope_frame": {
+      "description": "Per-entity relevance frame for the scope-relevance gate (D7). Generalizes Vicky TEA's incumbent-route.csv.",
+      "type": "object",
+      "required": ["in_scope"],
+      "additionalProperties": false,
+      "properties": {
+        "in_scope": {
+          "description": "Prose description of the in-scope configuration for this entity. Extracted values are checked against this.",
+          "type": "string",
+          "minLength": 1
+        },
+        "known_out_of_scope": {
+          "description": "Named variants/routes that are explicitly out of scope (rejected on extraction).",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "parameter": {
+      "type": "object",
+      "required": ["id", "label", "rule_type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Stable parameter identifier (e.g. 'specific_capex', 'electricity', 'Ti_yield').",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "label": { "type": "string", "minLength": 1 },
+        "rule_type": {
+          "description": "Normalization rule-type dispatched by normalize.py (D6, plan.md §5).",
+          "type": "string",
+          "enum": ["MONETARY", "INTENSITY", "FRACTION", "RATE", "CAPEX", "PASSTHROUGH", "JSON", "TEXT"]
+        },
+        "applies_to": {
+          "description": "Which entities this parameter applies to. 'all' (default) or an explicit list of entity ids. Ignored for reference_value parameters (those are global).",
+          "oneOf": [
+            { "type": "string", "const": "all" },
+            {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          ]
+        },
+        "first_class": {
+          "description": "True if this parameter justifies a source on its own (eligible for gap-fill targeting).",
+          "type": "boolean"
+        },
+        "context_free": {
+          "description": "True if this is a reference value searched WITHOUT TEA context (D8).",
+          "type": "boolean"
+        },
+        "reference_value": {
+          "description": "True if this is a reference value (market constant) carried under the reserved global entity, not a per-entity cell.",
+          "type": "boolean"
+        },
+        "scope": {
+          "description": "'global' for reference values (one value for the whole TEA); 'entity' for per-entity cells (default).",
+          "type": "string",
+          "enum": ["global", "entity"]
+        },
+        "units": {
+          "description": "Verbatim/declared units for the parameter where a single unit applies (e.g. RATE, some PASSTHROUGH).",
+          "type": "string"
+        },
+        "numerator_units": {
+          "description": "Numerator units for INTENSITY parameters (e.g. 'kWh', 'kg'); the denominator is the functional unit (or entity output, per 'per').",
+          "type": "string"
+        },
+        "per": {
+          "description": "INTENSITY denominator selector: the declared functional unit, or the producing entity's output.",
+          "type": "string",
+          "enum": ["functional_unit", "entity_output"]
+        },
+        "canonical_unit": {
+          "description": "Canonical unit a (often reference) value is normalized to (e.g. 'USD/kWh').",
+          "type": "string"
+        },
+        "basis": {
+          "description": "Free-form basis note (e.g. 'element-of-interest' for a FRACTION yield).",
+          "type": "string"
+        },
+        "market_basis": {
+          "description": "For reference values: the market the price/figure is drawn from (e.g. 'US industrial bulk').",
+          "type": "string"
+        },
+        "capex_form": {
+          "description": "For CAPEX parameters: the form the figure takes (e.g. 'total', 'specific_per_annual_output').",
+          "type": "string"
+        },
+        "description": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "comparable_rubric": {
+      "type": "object",
+      "required": ["dimensions", "hard_rule"],
+      "additionalProperties": false,
+      "properties": {
+        "dimensions": {
+          "description": "The similarity dimensions the estimation scout scores (D9). Swapping these changes the scout's scoring fields.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "hard_rule": {
+          "description": "The pass/fail rule applied to the rubric scores, in prose the scout enforces.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "validation_target": {
+      "type": "object",
+      "required": ["metric"],
+      "anyOf": [
+        { "required": ["range"] },
+        { "required": ["target"] }
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "metric": { "type": "string", "minLength": 1 },
+        "range": {
+          "description": "Acceptable [low, high] range.",
+          "type": "array",
+          "prefixItems": [{ "type": "number" }, { "type": "number" }],
+          "minItems": 2,
+          "maxItems": 2,
+          "items": false
+        },
+        "target": {
+          "description": "Single point target.",
+          "type": "number"
+        },
+        "unit": { "type": "string" },
+        "source": { "type": "string" }
+      }
+    }
+  }
+}
