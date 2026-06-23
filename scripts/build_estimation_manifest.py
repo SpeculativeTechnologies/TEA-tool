@@ -22,6 +22,7 @@ from typing import Mapping
 
 from lib.csvio import AUDIT_FIELDNAMES, MAIN_INPUT_FIELDNAMES, read_rows
 from lib.extraction import is_nullish
+from lib.pinned import is_pinned_row, truthy as _truthy
 from lib.schema import GLOBAL_ENTITY_ID, Schema, load_schema
 
 
@@ -31,10 +32,6 @@ ANCHOR_EXCLUDED_TAGS = {"D", "E"}
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _truthy(value: object) -> bool:
-    return str(value or "").strip().upper() == "TRUE"
 
 
 def _tag(row: Mapping[str, object]) -> str:
@@ -59,13 +56,6 @@ def _has_any_value(row: Mapping[str, object]) -> bool:
     return _has_model_value(row) or not is_nullish(row.get("raw_value"))
 
 
-def _is_pinned(row: Mapping[str, object]) -> bool:
-    return (
-        str(row.get("relevance_status") or "").strip().lower() == "pinned"
-        or _truthy(row.get("pinned"))
-    )
-
-
 def _existing_e_row(audit_rows: list[dict[str, str]], entity: str, parameter: str) -> bool:
     for row in audit_rows:
         if _cell(row) != (entity, parameter):
@@ -88,7 +78,7 @@ def _selected_real_row(
     for row in audit_rows:
         if _cell(row) != (entity, parameter):
             continue
-        if _is_pinned(row):
+        if is_pinned_row(row):
             return True
         if _tag(row) == ESTIMATE_QUALITY_TAG:
             continue
@@ -117,7 +107,7 @@ def _cell_is_blank(
     del schema
     main = main_by_cell.get((entity, parameter))
     if main:
-        if _is_pinned(main):
+        if is_pinned_row(main):
             return False
         if _has_model_value(main):
             if _tag(main) == ESTIMATE_QUALITY_TAG:

@@ -32,6 +32,8 @@ The analyst provides:
   for this entity.
 - `{{missing_reference_parameters}}` - optional JSON array of context-free
   reference-value parameter ids still blank under `REF`.
+- `{{pinned_cells}}` - optional JSON array of `[entity, parameter]` pairs
+  loaded from `pinned-inputs.csv`.
 - `{{approved_master_list_source_keys}}` - JSON array of already-approved
   master-list source keys.
 - `{{candidate_cap}}` - optional maximum candidate count. Default:
@@ -52,6 +54,8 @@ For normal entity coverage:
   source is expected to cover them, but a non-first-class parameter alone is not
   enough to spend a candidate slot.
 - Do not list parameters outside `{{uncovered_parameters}}`.
+- Do not list a cell included in `{{pinned_cells}}`; pinned inputs are already
+  authoritative and must not be searched again.
 - Do not list any entity other than `{{entity}}`.
 
 For still-missing reference values:
@@ -59,6 +63,7 @@ For still-missing reference values:
 - Use `reference_value_subqueries` for context-free search instructions.
 - If a source candidate is expected to cover a reference value directly, put it
   under `"entity": "REF"` with the reference parameter id.
+- Do not search or list a `REF` cell included in `{{pinned_cells}}`.
 - Reference-value queries and candidates must not mention the TEA, system,
   product, functional unit, route, or entity names.
 

@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.0",
+  "tea_id": "compute-service-inference",
+  "display_name": "Managed AI-Inference Service",
+  "vocabulary": { "entity": "cost center", "parameter": "line item" },
+  "functional_unit": { "name": "1M tokens served", "symbol": "1M tokens" },
+  "basis": {
+    "currency": "USD",
+    "base_year": 2025,
+    "inflation_index": "CPI",
+    "geography": "US"
+  },
+  "quality_tags": ["A", "B", "C", "D", "E"],
+
+  "entities": [
+    {
+      "id": "compute_hardware", "name": "Compute hardware", "output": "served inference",
+      "description": "GPU/accelerator fleet running the inference service",
+      "scope_frame": {
+        "in_scope": "Owned or reserved GPU accelerators amortized over their service life, running first-party inference.",
+        "known_out_of_scope": ["on-demand spot rental", "training clusters", "CPU-only inference"]
+      },
+      "estimation_policy": "first_principles_only"
+    },
+    {
+      "id": "power_cooling", "name": "Power & cooling", "output": "delivered kWh",
+      "description": "Facility power draw and cooling overhead (PUE)",
+      "scope_frame": {
+        "in_scope": "Grid electricity plus cooling overhead for the inference fleet at a colocation facility.",
+        "known_out_of_scope": ["on-site generation", "free-air-cooled edge sites"]
+      },
+      "estimation_policy": "first_principles_only"
+    },
+    {
+      "id": "networking", "name": "Networking", "output": "served bandwidth",
+      "description": "Transit bandwidth and load balancing",
+      "scope_frame": {
+        "in_scope": "Egress transit bandwidth and load balancing for the served API.",
+        "known_out_of_scope": ["private interconnect / dedicated fiber", "CDN-cached static delivery"]
+      },
+      "estimation_policy": "first_principles_only"
+    },
+    {
+      "id": "staffing", "name": "Staffing", "output": "operated service",
+      "description": "On-call ML/infra engineering to operate the service",
+      "scope_frame": {
+        "in_scope": "Loaded ML/infra engineering labor to operate and maintain the inference service.",
+        "known_out_of_scope": ["model research / training staff", "sales and G&A"]
+      },
+      "estimation_policy": "first_principles_only"
+    },
+    {
+      "id": "software_licensing", "name": "Software & licensing", "output": "licensed stack",
+      "description": "Orchestration, observability, and model-license costs",
+      "scope_frame": {
+        "in_scope": "Per-seat or per-usage licensing for the orchestration/observability stack and any model licenses.",
+        "known_out_of_scope": ["fully open-source self-hosted stack with no license cost"]
+      },
+      "estimation_policy": "first_principles_only"
+    }
+  ],
+
+  "parameters": [
+    {
+      "id": "monthly_cost", "label": "Monthly cost", "rule_type": "MONETARY",
+      "applies_to": "all", "first_class": true, "units": "USD/month",
+      "description": "Amortized monthly cost for the cost center (capital carried as monthly amortization — no separate CAPEX line)."
+    },
+    {
+      "id": "power_draw", "label": "Power draw", "rule_type": "INTENSITY",
+      "numerator_units": "kWh", "per": "functional_unit",
+      "applies_to": ["compute_hardware", "power_cooling"], "first_class": true
+    },
+    {
+      "id": "throughput", "label": "Throughput", "rule_type": "RATE",
+      "units": "1M tokens/h", "applies_to": ["compute_hardware"]
+    },
+    {
+      "id": "notes", "label": "Notes", "rule_type": "TEXT", "applies_to": "all"
+    },
+    {
+      "id": "industrial_electricity_price", "label": "Industrial electricity price",
+      "rule_type": "MONETARY", "context_free": true, "reference_value": true,
+      "scope": "global", "canonical_unit": "USD/kWh", "market_basis": "US industrial bulk"
+    },
+    {
+      "id": "gpu_street_price", "label": "GPU street price",
+      "rule_type": "MONETARY", "context_free": true, "reference_value": true,
+      "scope": "global", "canonical_unit": "USD/unit", "market_basis": "data-center GPU street price"
+    },
+    {
+      "id": "transit_bandwidth_price", "label": "Transit bandwidth price",
+      "rule_type": "MONETARY", "context_free": true, "reference_value": true,
+      "scope": "global", "canonical_unit": "USD/Mbps/mo", "market_basis": "IP transit, major IX"
+    },
+    {
+      "id": "ml_engineer_loaded_rate", "label": "ML engineer loaded rate",
+      "rule_type": "MONETARY", "context_free": true, "reference_value": true,
+      "scope": "global", "canonical_unit": "USD/hr", "market_basis": "US loaded labor cost"
+    }
+  ],
+
+  "estimation": {},
+
+  "conventions_needed": [
+    "inflation_index:CPI",
+    "currency_rates",
+    "unit_conversions"
+  ]
+}

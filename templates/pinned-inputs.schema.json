@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speculative-technologies.local/general-tea/pinned-inputs.schema.json",
+  "title": "Pinned Inputs CSV Row",
+  "description": "Schema for one row of pinned-inputs.csv after CSV parsing.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "entity",
+    "parameter",
+    "raw_value",
+    "raw_units",
+    "source_key",
+    "source_url"
+  ],
+  "properties": {
+    "entity": { "type": "string", "minLength": 1 },
+    "parameter": { "type": "string", "minLength": 1 },
+    "raw_value": { "type": "string", "minLength": 1 },
+    "raw_units": { "type": "string", "minLength": 1 },
+    "raw_basis_scale": { "type": "string" },
+    "raw_basis_scale_units": { "type": "string" },
+    "raw_basis_year": { "type": "string" },
+    "source_key": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "source_url": {
+      "type": "string",
+      "pattern": "^https?://"
+    },
+    "page_ref": { "type": "string" },
+    "quality_tag": { "type": "string" },
+    "notes": { "type": "string" }
+  }
+}

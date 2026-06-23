@@ -199,6 +199,22 @@ HELD_ESTIMATES_COLUMNS = [
 ]
 
 
+PINNED_INPUTS_COLUMNS = [
+    CsvColumn("entity", "Schema entity id, or REF for reference values."),
+    CsvColumn("parameter", "Schema parameter id."),
+    CsvColumn("raw_value", "Pinned value exactly as supplied by the analyst."),
+    CsvColumn("raw_units", "Units for raw_value."),
+    CsvColumn("raw_basis_scale", "Scale basis, if any."),
+    CsvColumn("raw_basis_scale_units", "Units for raw_basis_scale."),
+    CsvColumn("raw_basis_year", "Source-year or cost basis year."),
+    CsvColumn("source_key", "Stable provenance key for this pinned value."),
+    CsvColumn("source_url", "Canonical URL for source_key."),
+    CsvColumn("page_ref", "Page, table, figure, equation, or analyst note anchor."),
+    CsvColumn("quality_tag", "Optional A/B/C/D tag; pinned is a relevance_status, not a tag."),
+    CsvColumn("notes", "Why this cell is pinned or any carry-forward context."),
+]
+
+
 CSV_SCHEMAS = {
     "Sources.csv": SOURCES_COLUMNS,
     "Audit.csv": AUDIT_COLUMNS,
@@ -208,12 +224,14 @@ CSV_SCHEMAS = {
     "value_disagreements.csv": VALUE_DISAGREEMENTS_COLUMNS,
     "stage5_scope_fit_decisions.csv": SCOPE_FIT_DECISIONS_COLUMNS,
     "held_estimates.csv": HELD_ESTIMATES_COLUMNS,
+    "pinned-inputs.csv": PINNED_INPUTS_COLUMNS,
 }
 
 
 SOURCES_FIELDNAMES = column_names(SOURCES_COLUMNS)
 AUDIT_FIELDNAMES = column_names(AUDIT_COLUMNS)
 MAIN_INPUT_FIELDNAMES = column_names(MAIN_INPUT_COLUMNS)
+PINNED_INPUTS_FIELDNAMES = column_names(PINNED_INPUTS_COLUMNS)
 
 
 def blank_row(fieldnames: Sequence[str]) -> dict[str, str]:

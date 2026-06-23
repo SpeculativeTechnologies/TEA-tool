@@ -13,6 +13,7 @@ from .csvio import (
     write_rows,
 )
 from .extraction import is_nullish
+from .pinned import is_pinned_row
 from .schema import GLOBAL_ENTITY_ID, Schema
 from .source_url import source_url_for
 
@@ -99,10 +100,6 @@ def quality_rank(tag: object, schema: Schema) -> int:
 def is_capex_row(row: Mapping[str, object], schema: Schema) -> bool:
     parameter = str(row.get("parameter") or "").strip()
     return schema.has_parameter(parameter) and schema.rule_type(parameter) == "CAPEX"
-
-
-def is_pinned_row(row: Mapping[str, object]) -> bool:
-    return str(row.get("relevance_status") or "").strip().lower() == "pinned"
 
 
 def has_disagreement_decision(row: Mapping[str, object]) -> bool:

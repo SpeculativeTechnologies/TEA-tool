@@ -14,6 +14,7 @@ from lib.csvio import (  # noqa: E402
     AUDIT_FIELDNAMES,
     CSV_SCHEMAS,
     MAIN_INPUT_FIELDNAMES,
+    PINNED_INPUTS_FIELDNAMES,
     SOURCES_FIELDNAMES,
     append_rows,
     column_names,
@@ -178,14 +179,37 @@ class BuildCsvsTests(unittest.TestCase):
             with open(audit, newline="", encoding="utf-8") as fh:
                 self.assertEqual(next(csv.reader(fh)), AUDIT_FIELDNAMES)
 
-    def test_pinned_inputs_hook_defers_until_t8_loader_exists(self):
+    def test_pinned_inputs_hook_loads_t8_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
-            (out / "pinned-inputs.csv").write_text("entity,parameter\n", encoding="utf-8")
+            write_rows(
+                out / "pinned-inputs.csv",
+                PINNED_INPUTS_FIELDNAMES,
+                [
+                    {
+                        "entity": "compute_hardware",
+                        "parameter": "monthly_cost",
+                        "raw_value": "100",
+                        "raw_units": "USD/month",
+                        "raw_basis_year": "2025",
+                        "source_key": "pinned-source",
+                        "source_url": "https://example.test/pinned",
+                        "quality_tag": "D",
+                    }
+                ],
+            )
             result = build(COMPUTE_SCHEMA, output_dir=out)
             self.assertTrue(
-                any(action[0] == "pinned-inputs.csv" and "deferred" in action[2] for action in result["actions"])
+                any(action[0] == "pinned-inputs.csv" and "loaded" in action[2] for action in result["actions"])
             )
+            audit_rows = read_rows(out / "Audit.csv")
+            self.assertEqual(audit_rows[0]["relevance_status"], "pinned")
+            main_rows = read_rows(out / "Main Input.csv")
+            pinned = [
+                row for row in main_rows
+                if row["entity"] == "compute_hardware" and row["parameter"] == "monthly_cost"
+            ][0]
+            self.assertEqual(pinned["pinned"], "TRUE")
 
 
 if __name__ == "__main__":

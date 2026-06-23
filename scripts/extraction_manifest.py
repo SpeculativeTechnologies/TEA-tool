@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Iterable
 
 from lib.csvio import read_rows
+from lib.pinned import read_pinned_cells
 from lib.schema import GLOBAL_ENTITY_ID, Schema, load_schema
 from lib.search import Candidate, SearchValidationError, source_file_present_for, validate_search_file
 
@@ -97,9 +98,17 @@ def _parameter_descriptor(schema: Schema, parameter_id: str) -> dict[str, object
     return descriptor
 
 
-def _coverage_targets(schema: Schema, candidate: Candidate) -> list[dict[str, object]]:
+def _coverage_targets(
+    schema: Schema,
+    candidate: Candidate,
+    *,
+    pinned_cells: set[tuple[str, str]] | None = None,
+) -> list[dict[str, object]]:
+    pinned_cells = pinned_cells or set()
     grouped: dict[str, list[str]] = {}
     for entity, parameter in candidate.field_coverage:
+        if (entity, parameter) in pinned_cells:
+            continue
         grouped.setdefault(entity, [])
         if parameter not in grouped[entity]:
             grouped[entity].append(parameter)
@@ -136,6 +145,8 @@ def build_manifest(
     sources_path: str | Path = "Sources.csv",
     source_dirs: Iterable[str | Path] = DEFAULT_SOURCE_DIRS,
     output_dir: str | Path = "extractions",
+    main_input_path: str | Path | None = "Main Input.csv",
+    audit_path: str | Path | None = "Audit.csv",
 ) -> dict[str, object]:
     """Return a manifest document without writing it."""
 
@@ -151,6 +162,7 @@ def build_manifest(
     registry = _source_registry(sources_path)
     output_dir = Path(output_dir)
     source_dirs = [Path(path) for path in source_dirs]
+    pinned_cells = read_pinned_cells(main_input_path=main_input_path, audit_path=audit_path)
 
     entries: list[dict[str, object]] = []
     skipped_unregistered: list[str] = []
@@ -173,6 +185,10 @@ def build_manifest(
                 f"source_url mismatch for {source_key!r}: Sources.csv has {source_url!r}, "
                 f"candidate JSON has {candidate.source_url!r}"
             )
+        coverage_targets = _coverage_targets(schema, candidate, pinned_cells=pinned_cells)
+        if not coverage_targets:
+            continue
+
         entry_id = _safe_id(source_key)
         entries.append(
             {
@@ -185,7 +201,7 @@ def build_manifest(
                     candidate.quality_estimate
                     or _quality_from_notes(source_row.get("notes", ""))
                 ),
-                "coverage_targets": _coverage_targets(schema, candidate),
+                "coverage_targets": coverage_targets,
             }
         )
 
@@ -204,6 +220,7 @@ def build_manifest(
             "unregistered": skipped_unregistered,
             "registered_but_no_file": skipped_no_file,
             "registered_but_no_candidate": skipped_no_candidate,
+            "pinned_cells": [list(cell) for cell in sorted(pinned_cells)],
         },
     }
 
@@ -240,6 +257,18 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("extractions"),
         help="Directory named in each output_json path",
     )
+    parser.add_argument(
+        "--main-input",
+        type=Path,
+        default=Path("Main Input.csv"),
+        help="Main Input CSV used to skip pinned cells",
+    )
+    parser.add_argument(
+        "--audit",
+        type=Path,
+        default=Path("Audit.csv"),
+        help="Audit CSV used to skip pinned cells",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Print summary without writing")
     args = parser.parse_args(argv)
 
@@ -251,6 +280,8 @@ def main(argv: list[str] | None = None) -> int:
             sources_path=args.sources,
             source_dirs=source_dirs,
             output_dir=args.output_dir,
+            main_input_path=args.main_input,
+            audit_path=args.audit,
         )
     except (OSError, ValueError, SearchValidationError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

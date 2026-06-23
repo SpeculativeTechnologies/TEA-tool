@@ -289,6 +289,7 @@ def validate_search_doc(
     entity_id: str | None = None,
     uncovered_parameters: Iterable[str] | None = None,
     approved_source_keys: Iterable[str] = (),
+    pinned_cells: Iterable[tuple[str, str]] = (),
 ) -> list[Candidate]:
     """Validate and return normalized candidates from a search JSON artifact.
 
@@ -321,6 +322,11 @@ def validate_search_doc(
     errors.extend(_reference_subquery_context_errors(doc, schema))
 
     approved = {str(key).strip() for key in approved_source_keys if str(key).strip()}
+    pinned = {
+        (str(entity).strip(), str(parameter).strip())
+        for entity, parameter in pinned_cells
+        if str(entity).strip() and str(parameter).strip()
+    }
     seen_keys: set[str] = set()
     candidates: list[Candidate] = []
     allowed_quality = _allowed_quality_tags(schema)
@@ -378,6 +384,11 @@ def validate_search_doc(
                     f"{where}: parameter {parameter!r} does not apply to entity {entity!r}"
                 )
                 continue
+            if (entity, parameter) in pinned:
+                errors.append(
+                    f"{where}: field_coverage includes pinned cell ({entity!r}, {parameter!r}); "
+                    "pinned inputs must be skipped"
+                )
             if entity == GLOBAL_ENTITY_ID:
                 reference_parameters.append(parameter)
             else:
@@ -430,6 +441,7 @@ def validate_search_file(
     entity_id: str | None = None,
     uncovered_parameters: Iterable[str] | None = None,
     approved_source_keys: Iterable[str] = (),
+    pinned_cells: Iterable[tuple[str, str]] = (),
 ) -> list[Candidate]:
     """Load and validate a search JSON file."""
 
@@ -441,6 +453,7 @@ def validate_search_file(
         entity_id=entity_id,
         uncovered_parameters=uncovered_parameters,
         approved_source_keys=approved_source_keys,
+        pinned_cells=pinned_cells,
     )
 
 

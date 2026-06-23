@@ -280,7 +280,18 @@ dimensions in the config changes the scout's scoring fields).
 
 ---
 
-## T8 — Pinned inputs  ☐  *(needs T1, T2)*
+## T8 — Pinned inputs  ☑  *(needs T1, T2)*
+
+> **Done.** `templates/pinned-inputs.template.csv` and
+> `templates/pinned-inputs.schema.json` define the per-cell pin contract.
+> `scripts/lib/pinned.py` centralizes pinned-cell detection; `scripts/load_pinned_inputs.py`
+> validates schema applicability, injects `relevance_status=pinned` Audit rows,
+> and marks `Main Input.csv` skeleton cells. Search validation, extraction
+> manifests, and estimation manifests now skip pinned cells, while consolidation
+> locks pinned rows into selection. `scripts/finalize_inputs.py` emits final
+> Main Input/reference-value artifacts plus `run-manifest.md` without running a
+> model. T8 coverage lives in `tests/test_pinned_inputs.py` plus lane tests;
+> full suite green at 85 tests (`python -m unittest discover -s tests`).
 
 **Goal:** accept-as-truth inputs that skip search/extract/estimate and lock
 consolidation (plan.md §7).
@@ -303,7 +314,16 @@ cells identical.
 
 ---
 
-## T9 — Docs & templates  ☐  *(needs T1 shape; finalize late)*
+## T9 — Docs & templates  ☑  *(needs T1 shape; finalize late)*
+
+> **Done.** `framework.md` now explains the domain-agnostic TEA framing,
+> boundaries, evidence model, rule types, reference values, estimation, pinned
+> inputs, and hand-off. `workflow.md` is expanded into a full Phase 0-7
+> operator guide with concrete run-folder commands and human-gate instructions.
+> `README.md` provides quickstart, outputs, glossary, and test entrypoint.
+> `templates/scope.template.md` and `templates/data-requirements.template.md`
+> give new analysts the sections and tables needed to author the two Stage 0
+> input docs without reading the Ti example.
 
 **Deliverables:** `framework.md` (generalized, domain-agnostic — derived from
 Vicky TEA `TEA Framework.md`), `workflow.md` (plan.md §6 expanded into an
@@ -315,7 +335,15 @@ without reading the Ti example.
 
 ---
 
-## T10 — Worked examples  ☐  *(needs T1; Ti e2e needs T3–T7)*
+## T10 — Worked examples  ☑  *(needs T1; Ti e2e needs T3–T7)*
+
+> **Done.** `examples/ti-6al-4v/` now contains human-authored `scope.md` and
+> `data-requirements.md`, a validated `tea-schema.json` aligned with the Ti
+> fixture, and `expected/Main Input.csv` copied from Victoria Chernow TEA
+> `Run 2` as the regression oracle. `examples/compute-service/` now contains
+> its scope, data-requirements doc, and validated non-industrial schema. T10
+> coverage lives in `tests/test_examples.py`; full suite green at 91 tests
+> (`python -m unittest discover -s tests`).
 
 **Deliverables**
 - `examples/ti-6al-4v/` — `scope.md`, `data-requirements.md` (re-expressing the
@@ -333,7 +361,18 @@ consolidated result; compute example compiles + builds + smoke-normalizes.
 
 ---
 
-## T11 — Test suite  ☐  *(runs alongside every lane)*
+## T11 — Test suite  ☑  *(runs alongside every lane)*
+
+> **Done.** The suite now has a single unittest entrypoint:
+> `python -m unittest discover -s tests`. Coverage includes unit tests for the
+> schema loader/validator, CSV contracts, source URL denormalization, search,
+> extraction, normalization transforms and queues, consolidation/disagreement
+> gates, estimation, pinned inputs/finalization, worked examples, and T11
+> deterministic end-to-end fixtures. `tests/test_end_to_end.py` wires build →
+> normalize → consolidate → finalize for the compute smoke case and runs a Ti
+> legacy-oracle regression projection against `examples/ti-6al-4v/expected/Main Input.csv`,
+> with structural v1 rewrite deltas documented in the test. Full suite green at
+> 93 tests (`python -m unittest discover -s tests`).
 
 **Deliverables:** unit tests (schema loader/validator, each rule-type transform,
 `source_url` denormalizer, pinned skip/lock predicate, every sweep/apply),

@@ -12,9 +12,8 @@ The builder writes:
 - Main Input.csv: one skeleton row per Schema.skeleton_cells(), including REF
   rows for reference values
 
-If pinned-inputs.csv is present, the builder calls the T8 loader when it exists.
-Until T8 lands, that hook reports a deferred action without inventing pinned
-semantics here.
+If pinned-inputs.csv is present, the builder calls the T8 loader to append
+Audit rows with relevance_status=pinned and mark the matching Main Input cells.
 """
 
 from __future__ import annotations
@@ -119,15 +118,7 @@ def _maybe_load_pinned_inputs(
     if dry_run:
         return ("pinned-inputs.csv", pinned_path, "would delegate to scripts/load_pinned_inputs.py")
 
-    try:
-        from load_pinned_inputs import load_pinned_inputs  # type: ignore
-    except ImportError:
-        return (
-            "pinned-inputs.csv",
-            pinned_path,
-            "deferred (T8 load_pinned_inputs.py is not implemented yet)",
-        )
-
+    from load_pinned_inputs import load_pinned_inputs  # type: ignore
     load_pinned_inputs(schema_path=schema_path, run_dir=output_dir)
     return ("pinned-inputs.csv", pinned_path, "loaded via scripts/load_pinned_inputs.py")
 

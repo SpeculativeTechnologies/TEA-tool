@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from apply_held_verdicts import apply_verdicts  # noqa: E402
 from extraction_manifest import build_manifest, write_manifest  # noqa: E402
 from ingest_extractor_output import ingest_extractor_output  # noqa: E402
-from lib.csvio import AUDIT_FIELDNAMES, CSV_SCHEMAS, SOURCES_FIELDNAMES, column_names, read_rows, write_rows  # noqa: E402
+from lib.csvio import AUDIT_FIELDNAMES, CSV_SCHEMAS, MAIN_INPUT_FIELDNAMES, SOURCES_FIELDNAMES, column_names, read_rows, write_rows  # noqa: E402
 from lib.extraction import ExtractionHoldError, ExtractionValidationError, assert_no_unresolved_holds  # noqa: E402
 from lib.source_url import SourceUrlError  # noqa: E402
 from next_batch import next_batch  # noqa: E402
@@ -135,6 +135,34 @@ class ExtractionManifestTests(unittest.TestCase):
             self.assertIn("scope_frame", entry["coverage_targets"][0])
             params = [p["id"] for p in entry["coverage_targets"][0]["parameters"]]
             self.assertEqual(params, ["electricity", "thermal_energy"])
+
+    def test_manifest_skips_pinned_cells(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            search_json = tmp_path / "master-list.json"
+            search_json.write_text(json.dumps(candidate_doc()), encoding="utf-8")
+            sources = tmp_path / "Sources.csv"
+            write_rows(sources, SOURCES_FIELDNAMES, sources_rows())
+            source_dir = tmp_path / "master list sources"
+            source_dir.mkdir()
+            (source_dir / "1A_useful-source.pdf").write_text("downloaded", encoding="utf-8")
+            main = tmp_path / "Main Input.csv"
+            row = {name: "" for name in MAIN_INPUT_FIELDNAMES}
+            row.update({"entity": "1A", "parameter": "electricity", "pinned": "TRUE"})
+            write_rows(main, MAIN_INPUT_FIELDNAMES, [row])
+
+            manifest = build_manifest(
+                schema_path=TI_SCHEMA,
+                inputs=[search_json],
+                sources_path=sources,
+                source_dirs=[source_dir],
+                output_dir=tmp_path / "extractions",
+                main_input_path=main,
+                audit_path=None,
+            )
+
+            params = [p["id"] for p in manifest["manifest"][0]["coverage_targets"][0]["parameters"]]
+            self.assertEqual(params, ["thermal_energy"])
 
     def test_next_batch_skips_nonempty_outputs(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -86,6 +86,16 @@ class SearchCandidateValidationTests(unittest.TestCase):
             validate_search_doc(doc, schema)
         self.assertIn("context-free", str(ctx.exception))
 
+    def test_pinned_cells_are_not_valid_search_coverage(self):
+        schema = load_schema(TI_SCHEMA)
+        doc = {
+            "schema_tea_id": schema.tea_id,
+            "candidates": [candidate()],
+        }
+        with self.assertRaises(SearchValidationError) as ctx:
+            validate_search_doc(doc, schema, pinned_cells=[("1A", "electricity")])
+        self.assertIn("pinned inputs must be skipped", str(ctx.exception))
+
     def test_gap_fill_requires_first_class_coverage_from_config(self):
         schema = load_schema(TI_SCHEMA)
         second_class_only = {

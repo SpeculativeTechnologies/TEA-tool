@@ -31,6 +31,8 @@ The analyst provides:
   `parameters`, and `defaults`.
 - `{{entities_in_scope}}` - optional JSON array of entity ids to cover. Default:
   every entity in the schema.
+- `{{pinned_cells}}` - optional JSON array of `[entity, parameter]` pairs
+  loaded from `pinned-inputs.csv`.
 - `{{candidate_cap}}` - optional maximum candidate count. Default:
   `schema.defaults.master_list_candidate_cap`; if absent, use 15.
 
@@ -48,6 +50,8 @@ Build the allowed coverage matrix from the schema:
   the parameter is not `reference_value` and its `applies_to` is `"all"` or
   explicitly includes that entity id.
 - For reference-value parameters, use the reserved global entity id `REF`.
+- Exclude every cell listed in `{{pinned_cells}}`. Pinned cells are already
+  authoritative and must not be searched again.
 - Never invent entity ids or parameter ids.
 - Never list a parameter under an entity unless the schema says it applies.
 

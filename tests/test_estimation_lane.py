@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from append_estimation_rows import EstimationValidationError, append_estimation_rows  # noqa: E402
 from apply_held_estimates import apply_held_estimates  # noqa: E402
 from build_estimation_manifest import build_manifest  # noqa: E402
-from lib.csvio import AUDIT_FIELDNAMES, SOURCES_FIELDNAMES, read_rows, write_rows  # noqa: E402
+from lib.csvio import AUDIT_FIELDNAMES, MAIN_INPUT_FIELDNAMES, SOURCES_FIELDNAMES, read_rows, write_rows  # noqa: E402
 from sweep_held_estimates import HELD_ESTIMATES_FIELDNAMES, sweep_held_estimates  # noqa: E402
 
 
@@ -166,6 +166,28 @@ class EstimationManifestTests(unittest.TestCase):
         one_c = [entity for entity in manifest["entities"] if entity["entity"] == "1C"][0]
         self.assertEqual(one_c["estimation_policy"], "comparables_first")
         self.assertTrue(any(param["id"] == "specific_capex" for param in one_c["blank_parameters"]))
+
+    def test_manifest_skips_cells_marked_pinned_in_main_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            audit = root / "Audit.csv"
+            main = root / "Main Input.csv"
+            write_rows(audit, AUDIT_FIELDNAMES, [])
+            row = {name: "" for name in MAIN_INPUT_FIELDNAMES}
+            row.update({"entity": "compute_hardware", "parameter": "monthly_cost", "pinned": "TRUE"})
+            write_rows(main, MAIN_INPUT_FIELDNAMES, [row])
+
+            manifest = build_manifest(
+                schema_path=COMPUTE_SCHEMA,
+                audit_path=audit,
+                main_input_path=main,
+            )
+            compute = [
+                entity for entity in manifest["entities"]
+                if entity["entity"] == "compute_hardware"
+            ][0]
+            blanks = {param["id"] for param in compute["blank_parameters"]}
+            self.assertNotIn("monthly_cost", blanks)
 
 
 class AppendEstimationRowsTests(unittest.TestCase):
