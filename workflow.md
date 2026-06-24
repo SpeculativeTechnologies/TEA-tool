@@ -11,7 +11,38 @@ Each run folder should contain `scope.md`, `data-requirements.md`,
 `tea-schema.json`, working CSVs, source folders, search history, review queues,
 and final artifacts.
 
+New users do not have to drive these stages by hand. The `/tea`
+skill (`.claude/skills/tea/`) wraps this workflow end to end: it
+runs intake, writes the three starting documents, owns durable run state and an
+issue ledger through `scripts/orchestrator.py`, and routes the rest through the
+phases below. This guide remains the execution authority the skill follows.
+
 ## Phase 0 - Setup
+
+### 0.0 Select Execution Mode
+
+Ask once at the beginning of the run:
+
+- **Auto with Human Gates** (`auto_with_human_gates`, default): pause at each
+  review gate for analyst decisions.
+- **Auto** (`auto`): do not pause between stages. At every gate, run
+  `prompts/auto-gate-agent.md`, write its decisions and `AUTO:` reasoning into
+  the existing queue fields, immediately apply the queue, and continue.
+
+Stage 0 records the choice in `tea-schema.json`. The choice applies only to the
+current run and is not persisted as the default for future runs.
+
+In Auto mode, maintain `$RUN/auto-run-log.md`. Record source-screening choices,
+major assumptions, low-confidence decisions, flags, recoverable technical
+errors and their fallback, and any unrecoverable technical errors. Ordinary
+ambiguity is not a reason to interrupt the run.
+
+Auto mode uses open evidence only. Search specifically for publicly inspectable
+full text, tables, datasets, repository copies, government publications, open
+journals/preprints, and official public technical documentation. Do not use
+sources that require a subscription, institutional login, purchase, library
+access, or an access request. A citation or abstract alone is not evidence the
+Auto workflow can inspect.
 
 ### 0.1 Compile Schema
 
@@ -27,8 +58,9 @@ The agent writes:
 - `$RUN/schema-open-questions.md`
 - `$RUN/conventions/*.csv`
 
-Stage 0 must ask or log questions when the input docs are ambiguous. Do not
-continue downstream while blocking questions remain.
+In Auto with Human Gates mode, Stage 0 asks or logs questions and blocks on
+blocking ambiguity. In Auto mode, it makes the narrowest defensible assumption,
+labels it, records confidence, and continues.
 
 Validate the schema:
 
@@ -44,21 +76,33 @@ python scripts/scaffold_conventions.py --schema "$RUN/tea-schema.json" --output-
 
 ### 0.2 Build Working CSVs
 
-If the run has pinned values, create `$RUN/pinned-inputs.csv` from
-`templates/pinned-inputs.template.csv` before building.
-
 ```powershell
 python scripts/build_csvs.py --schema "$RUN/tea-schema.json" --output-dir "$RUN"
 ```
 
-This creates `Audit.csv`, `Sources.csv`, `Main Input.csv`, source directories,
-and, when present, loads `pinned-inputs.csv`.
+This creates `Audit.csv`, `Sources.csv`, `Main Input.csv`, and source
+directories.
 
-If pinned inputs are added after the build step:
+For comparison projects, build each option run folder first, then materialize
+the comparison shared inputs with
+`scripts/materialize_shared_inputs.py --project-dir <comparison-project>`.
+
+### 0.3 Materialize Analyst Inputs (optional)
+
+When the analyst supplied values mapped to schema cells, record them in
+`$RUN/user-inputs.csv` (and any synthetic source in `$RUN/user-sources.csv`,
+which may use `source_role=analyst`), then materialize before searching:
 
 ```powershell
-python scripts/load_pinned_inputs.py --schema "$RUN/tea-schema.json" --run-dir "$RUN"
+python scripts/orchestrator.py materialize-user-inputs --run-dir "$RUN"
 ```
+
+This validates the inputs against the schema, blocks on two disagreeing fixed
+inputs for one cell, merges the sources into `Sources.csv`, and writes analyst
+rows into `Audit.csv` (`input_origin` of `analyst`/`extracted`/`shared`, and
+`input_priority=fixed` when fixed). At consolidation, a fixed candidate outranks
+a shared input, which outranks ordinary candidates; a fixed cell suppresses
+replacement research, while non-fixed analyst evidence remains a normal candidate.
 
 ## Phase 1 - Master-List Search
 
@@ -86,6 +130,12 @@ Review each candidate before downloading:
 
 Download approved files into `$RUN/master list sources/`. Do not register
 undownloaded candidates.
+
+In Auto mode, the Auto Gate Agent performs this screening, records every
+approve/reject decision in `$RUN/auto-run-log.md`, and continues immediately.
+It approves only sources whose relevant evidence is openly inspectable; if a
+publisher page is restricted, it first looks for a legitimate open repository
+or author copy.
 
 ### 1.3 Normalize Filenames
 
@@ -136,6 +186,9 @@ Review each gap-fill candidate:
 - Are residual gaps documented instead of filled with weak guesses?
 
 Download approved files into `$RUN/gap fill sources/`.
+
+In Auto mode, the Auto Gate Agent performs this screening and continues
+immediately, using the same open-evidence-only rule.
 
 ### 2.3 Normalize Filenames
 
@@ -192,6 +245,8 @@ python scripts/apply_held_verdicts.py --audit "$RUN/Audit.csv" --queue "$RUN/hel
 ```
 
 Normalization hard-blocks while any row still has `relevance_status=hold`.
+In Auto mode, resolve every row with `accept` or `reject`; do not use
+`re-extract` merely to ask the analyst.
 
 ### 3.3 Ingest Complete Set
 
@@ -219,6 +274,9 @@ Use `prompts/normalization-agent.md` for rows needing agent calculation. Then:
 python scripts/apply_normalization_flags.py --audit "$RUN/Audit_normalized.csv" --queue "$RUN/normalization_flags.csv"
 ```
 
+In Auto mode, run the Auto Gate Agent and normalization agent as needed, apply
+all rows, and continue without analyst input.
+
 ### 4.3 Resolve Cross-Source Disagreements
 
 ```powershell
@@ -231,6 +289,8 @@ Then:
 ```powershell
 python scripts/apply_value_disagreements.py --audit "$RUN/Audit_normalized.csv" --queue "$RUN/value_disagreements.csv"
 ```
+
+In Auto mode, the Auto Gate Agent resolves and applies every disagreement.
 
 ### 4.4 Consolidate To Main Input
 
@@ -248,13 +308,17 @@ Pinned cells always outrank ordinary rows.
 
 Review `$RUN/Main Input.csv` for coverage and quality.
 
-Allowed exits:
+Choose one of these exits:
 
 - Proceed to estimation for remaining blanks.
 - Run another gap-fill round for specific entities or reference values.
-- Accept documented gaps.
+- Supply a value for the blank (analyst input).
 
-There is no re-scoping or re-lumping stage.
+No mode may finalize with a blank schema cell. In Auto mode, always proceed to
+estimation for every remaining blank. In Auto with Human Gates mode, resolve each
+remaining blank by approving an estimate or supplying a value; if neither is
+available, the run stays blocked and resumable. Documented gaps are not an allowed
+final state in either mode.
 
 ## Phase 6 - Estimation
 
@@ -294,6 +358,9 @@ Overrides require `analyst_value` and `analyst_units` and are re-tagged from
 python scripts/apply_held_estimates.py --audit "$RUN/Audit_normalized_consolidated.csv" --queue "$RUN/held_estimates.csv"
 ```
 
+In Auto mode, the Auto Gate Agent resolves every estimate immediately. Low
+confidence is recorded for final review but does not leave the cell blank.
+
 ### 6.3 Normalize And Re-Consolidate Estimate Rows
 
 ```powershell
@@ -312,7 +379,7 @@ python scripts/consolidate.py --schema "$RUN/tea-schema.json" --audit "$RUN/Audi
 ### 7.1 Finalize Inputs
 
 ```powershell
-python scripts/finalize_inputs.py --schema "$RUN/tea-schema.json" --main-input "$RUN/Main Input.csv" --sources "$RUN/Sources.csv" --output-dir "$RUN/final"
+python scripts/finalize_inputs.py --schema "$RUN/tea-schema.json" --main-input "$RUN/Main Input.csv" --sources "$RUN/Sources.csv" --audit "$RUN/Audit_final_consolidated.csv" --auto-run-log "$RUN/auto-run-log.md" --output-dir "$RUN/final"
 ```
 
 Final artifacts:
@@ -320,8 +387,28 @@ Final artifacts:
 - `$RUN/final/Main Input.csv`
 - `$RUN/final/Reference Values.csv`
 - `$RUN/final/run-manifest.md`
+- `$RUN/final/auto-review.md` in Auto mode
+
+Finalization is a hard completeness gate in **both** modes: every schema cell
+must contain exactly one finite numeric model value (`normalized_value` or
+`capex_usd`). Finalization fails if any cell is blank or non-numeric (pass
+`--allow-gaps` only for an explicitly-draft intermediate manifest, never the
+final hand-off). The Auto review compiles AI gate reasoning, assumptions,
+estimates, flags, and technical errors for later review.
 
 Stop here. The analyst runs their own model outside this workflow.
+
+### 7.2 Finalize Comparison Project
+
+For a comparison wrapper, after each option has been finalized:
+
+```powershell
+python scripts/validate_comparison_project.py --project-dir "$COMPARISON"
+python scripts/finalize_comparison.py --project-dir "$COMPARISON"
+```
+
+This emits `final/shared-assumptions.csv`, `final/option-summary.csv`, and
+`final/comparison-manifest.md` under the comparison project folder.
 
 ## Run Hygiene
 
@@ -329,54 +416,6 @@ Stop here. The analyst runs their own model outside this workflow.
 - Keep every LLM JSON output in `search-history/`, `extractions/`, or a named
   estimation file.
 - Do not edit `Main Input.csv` directly except by rerunning the pipeline or
-  supplying pinned inputs before build.
+  materializing comparison shared inputs before search/extraction.
 - When a script offers `--dry-run`, use it before file-moving or large updates.
 - If a gate produces a queue, resolve and apply it before continuing.
-
-## Human Gate Memo Templates
-
-Use these short memos for gates that are not already fully captured by a queue
-CSV. Store them in `$RUN/review-history/`.
-
-### Source Screening Memo
-
-```markdown
-# Source Screening - <phase/entity/date>
-
-Decision: approved / rejected / needs follow-up
-Candidate file:
-Source key:
-Source URL:
-Covered cells:
-Reason:
-Downloader notes:
-```
-
-### Completeness Review Memo
-
-```markdown
-# Completeness Review - <date>
-
-Main Input reviewed:
-Filled cells:
-Residual gaps:
-Low-quality cells to accept:
-Cells needing another gap-fill round:
-Decision: proceed to estimation / run gap-fill / accept gaps
-Analyst rationale:
-```
-
-### Final Hand-Off Memo
-
-```markdown
-# Final Hand-Off - <date>
-
-Final folder:
-Main Input:
-Reference Values:
-Run manifest:
-Pinned cells:
-Residual gaps:
-Validation targets surfaced:
-Known caveats before model use:
-```

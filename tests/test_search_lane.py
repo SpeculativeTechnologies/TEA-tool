@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from lib.csvio import SOURCES_FIELDNAMES, read_rows, write_rows  # noqa: E402
-from lib.schema import GLOBAL_ENTITY_ID, load_schema  # noqa: E402
+from lib.schema import GLOBAL_ENTITY_ID, Schema, load_schema  # noqa: E402
 from lib.search import SearchValidationError, validate_search_doc  # noqa: E402
 from register_sources import register_sources  # noqa: E402
 from rename_sources import rename_sources  # noqa: E402
@@ -37,6 +37,31 @@ def candidate(source_key="useful-source", *, coverage=None, source_url="https://
 
 
 class SearchCandidateValidationTests(unittest.TestCase):
+    def test_auto_mode_requires_explicit_open_access(self):
+        data = json.loads(TI_SCHEMA.read_text(encoding="utf-8"))
+        data["execution_mode"] = "auto"
+        schema = Schema(data)
+        restricted = candidate()
+        restricted["access_notes"] = "paywall (publisher)"
+        with self.assertRaises(SearchValidationError) as ctx:
+            validate_search_doc(
+                {"schema_tea_id": schema.tea_id, "candidates": [restricted]},
+                schema,
+            )
+        self.assertIn("open-access", str(ctx.exception))
+
+        accessible = candidate()
+        accessible["access_notes"] = "open access full text verified"
+        self.assertEqual(
+            len(
+                validate_search_doc(
+                    {"schema_tea_id": schema.tea_id, "candidates": [accessible]},
+                    schema,
+                )
+            ),
+            1,
+        )
+
     def test_master_candidate_coverage_must_resolve_to_schema_pairs(self):
         schema = load_schema(TI_SCHEMA)
         valid_doc = {
@@ -86,15 +111,15 @@ class SearchCandidateValidationTests(unittest.TestCase):
             validate_search_doc(doc, schema)
         self.assertIn("context-free", str(ctx.exception))
 
-    def test_pinned_cells_are_not_valid_search_coverage(self):
+    def test_satisfied_cells_are_not_valid_search_coverage(self):
         schema = load_schema(TI_SCHEMA)
         doc = {
             "schema_tea_id": schema.tea_id,
             "candidates": [candidate()],
         }
         with self.assertRaises(SearchValidationError) as ctx:
-            validate_search_doc(doc, schema, pinned_cells=[("1A", "electricity")])
-        self.assertIn("pinned inputs must be skipped", str(ctx.exception))
+            validate_search_doc(doc, schema, satisfied_cells=[("1A", "electricity")])
+        self.assertIn("satisfied shared inputs must be skipped", str(ctx.exception))
 
     def test_gap_fill_requires_first_class_coverage_from_config(self):
         schema = load_schema(TI_SCHEMA)
@@ -102,7 +127,7 @@ class SearchCandidateValidationTests(unittest.TestCase):
             "schema_tea_id": schema.tea_id,
             "entity": "1A",
             "candidates": [
-                candidate(coverage=[{"entity": "1A", "parameters": ["output_notes"]}])
+                candidate(coverage=[{"entity": "1A", "parameters": ["feedstock_quantity"]}])
             ],
         }
         with self.assertRaises(SearchValidationError) as ctx:
@@ -111,7 +136,7 @@ class SearchCandidateValidationTests(unittest.TestCase):
                 schema,
                 mode="gap",
                 entity_id="1A",
-                uncovered_parameters=["output_notes"],
+                uncovered_parameters=["feedstock_quantity"],
             )
         self.assertIn("first_class", str(ctx.exception))
 

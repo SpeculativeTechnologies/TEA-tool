@@ -63,7 +63,8 @@ while the final model can carry those values through its mass-balance logic.
 ## Scenarios
 
 This example represents one incumbent system only. Comparison TEAs should run a
-second system and use `pinned-inputs.csv` to hold shared values constant.
+second option under a comparison wrapper and map reusable evidence through
+`shared-inputs.csv` plus `shared-input-mappings.csv`.
 
 ## Headline metrics
 
@@ -75,4 +76,3 @@ cost contributions, but this tool stops at populated inputs.
 | Metric | Target | Source |
 |---|---|---|
 | Ti sponge price | 11 to 12.5 USD/kg | Argus TG100 Sep-2025 |
-

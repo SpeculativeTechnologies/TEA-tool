@@ -12,8 +12,8 @@ The builder writes:
 - Main Input.csv: one skeleton row per Schema.skeleton_cells(), including REF
   rows for reference values
 
-If pinned-inputs.csv is present, the builder calls the T8 loader to append
-Audit rows with relevance_status=pinned and mark the matching Main Input cells.
+Comparison shared inputs are materialized by scripts/materialize_shared_inputs.py
+after the per-option working CSVs exist.
 """
 
 from __future__ import annotations
@@ -106,23 +106,6 @@ def _ensure_source_dirs(output_dir: Path, *, dry_run: bool) -> list[tuple[str, P
     return actions
 
 
-def _maybe_load_pinned_inputs(
-    schema_path: Path,
-    output_dir: Path,
-    *,
-    dry_run: bool,
-) -> tuple[str, Path, str] | None:
-    pinned_path = output_dir / "pinned-inputs.csv"
-    if not pinned_path.exists():
-        return None
-    if dry_run:
-        return ("pinned-inputs.csv", pinned_path, "would delegate to scripts/load_pinned_inputs.py")
-
-    from load_pinned_inputs import load_pinned_inputs  # type: ignore
-    load_pinned_inputs(schema_path=schema_path, run_dir=output_dir)
-    return ("pinned-inputs.csv", pinned_path, "loaded via scripts/load_pinned_inputs.py")
-
-
 def build(
     schema_path: str | Path,
     *,
@@ -171,10 +154,6 @@ def build(
     ]
 
     actions.extend(_ensure_source_dirs(output_dir, dry_run=dry_run))
-    pinned_action = _maybe_load_pinned_inputs(schema_path, output_dir, dry_run=dry_run)
-    if pinned_action:
-        actions.append(pinned_action)
-
     return {
         "schema": schema,
         "output_dir": output_dir,

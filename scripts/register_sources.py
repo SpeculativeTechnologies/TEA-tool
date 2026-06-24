@@ -58,8 +58,8 @@ def register_sources(
 ) -> dict[str, object]:
     """Append newly approved candidate rows to Sources.csv."""
 
-    if source_role not in {"extraction", "estimate", "both"}:
-        raise ValueError("source_role must be extraction, estimate, or both")
+    if source_role not in {"extraction", "estimate", "both", "analyst"}:
+        raise ValueError("source_role must be extraction, estimate, both, or analyst")
 
     schema = load_schema(schema_path)
     candidates = validate_search_file(

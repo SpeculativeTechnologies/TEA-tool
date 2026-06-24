@@ -112,15 +112,6 @@
       "numerator_units": "kg", "per": "entity_output", "applies_to": "all"
     },
     {
-      "id": "stoichiometry", "label": "Stoichiometry", "rule_type": "JSON",
-      "applies_to": ["1A", "1B", "1C", "2A", "2B"],
-      "description": "Structured reaction stoichiometry; no numeric normalization."
-    },
-    {
-      "id": "output_notes", "label": "Output / co-product notes", "rule_type": "TEXT",
-      "applies_to": "all"
-    },
-    {
       "id": "consumables.cl2_makeup", "label": "Cl2 make-up", "rule_type": "INTENSITY",
       "numerator_units": "kg", "per": "entity_output", "applies_to": ["1A"]
     },

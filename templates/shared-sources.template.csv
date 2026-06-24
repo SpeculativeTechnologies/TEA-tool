@@ -1,0 +1,2 @@
+source_key,authors,title,year,publisher_or_journal,source_url,doi,access_date,page_or_table_reference,source_role,notes
+example-shared-source,Example Agency,Example shared market dataset,2025,Example Publisher,https://example.test/source,,2026-06-23,Table 1,extraction,Shared comparison source

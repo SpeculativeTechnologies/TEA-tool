@@ -14,8 +14,8 @@ manifest are ready. It does not construct a process model, financial model,
 scenario engine, or back-cast.
 
 One run represents one system or configuration. Comparisons across systems are
-handled by separate runs and, when needed, pinned inputs that carry selected
-cells from one run into another.
+handled by a comparison wrapper containing separate option runs, shared raw
+evidence, and explicit mappings into each option schema.
 
 ## Core Objects
 
@@ -69,9 +69,9 @@ Every entity has a scope frame:
 - `known_out_of_scope`: named variants that should not contaminate the run.
 
 During extraction, each value is labeled `clear`, `hold`, or `reject`. Held
-rows are reviewed by the analyst before normalization can proceed. Pinned rows
-use the reserved status `pinned` and outrank ordinary extracted or estimated
-data.
+rows are reviewed by the analyst before normalization can proceed. Comparison
+shared inputs use `input_origin=shared` with `relevance_status=clear` and are
+treated as authoritative for their mapped cells.
 
 ## Evidence And Quality
 
@@ -121,14 +121,23 @@ These gates are not clerical ceremony. They protect the run from wrong
 boundaries, mismatched units, weak sources, and plausible-looking estimates
 that do not belong in the model.
 
+The run's setup-time `execution_mode` controls who resolves these gates.
+`auto_with_human_gates` is the default and pauses for the analyst. `auto` uses
+the AI as the gate operator, records each decision and rationale, continues
+through ambiguity, and surfaces assumptions, flags, and technical errors at the
+end. Auto cannot finalize until every TEA cell has one finite numeric value.
+Auto also treats evidence accessibility as an eligibility requirement: search
+and estimation may use only relevant evidence that is openly inspectable,
+rather than paywalled, login-only, purchase-only, or request-access material.
+
 ## Final Hand-Off
 
 The final artifacts are:
 
 - `Main Input.csv`: selected model-ready cells.
 - `Reference Values.csv`: global `REF` rows split out for convenience.
-- `run-manifest.md`: coverage, quality distribution, source counts, pinned
-  cells, residual gaps, and validation targets.
+- `run-manifest.md`: coverage, quality distribution, source counts, shared
+  inputs, residual gaps, and validation targets.
 
 Validation targets are surfaced for the analyst's convenience. The tool does
 not run the model or judge whether the TEA result passes those targets.

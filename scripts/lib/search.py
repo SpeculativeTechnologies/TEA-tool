@@ -25,6 +25,28 @@ from .schema import GLOBAL_ENTITY_ID, Schema
 SUPPORTED_SOURCE_EXTENSIONS = {".pdf", ".docx", ".html", ".htm", ".txt"}
 SOURCE_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 HTTP_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
+OPEN_ACCESS_MARKERS = (
+    "open access",
+    "openly accessible",
+    "publicly accessible",
+    "free full text",
+    "free to access",
+    "public domain",
+    "public dataset",
+    "government website",
+    "official public",
+)
+RESTRICTED_ACCESS_MARKERS = (
+    "paywall",
+    "subscription",
+    "library access",
+    "library-only",
+    "purchase required",
+    "request access",
+    "technical report request",
+    "login required",
+    "abstract only",
+)
 
 STOPWORDS = {
     "about",
@@ -122,6 +144,15 @@ def normalize_text(value: str) -> str:
         .lower()
     )
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", ascii_text)).strip()
+
+
+def is_open_access_notes(value: object) -> bool:
+    """Whether access metadata explicitly says the full evidence is inspectable."""
+
+    text = normalize_text(str(value or ""))
+    if any(marker in text for marker in RESTRICTED_ACCESS_MARKERS):
+        return False
+    return any(marker in text for marker in OPEN_ACCESS_MARKERS)
 
 
 def compact_text(value: str) -> str:
@@ -289,7 +320,7 @@ def validate_search_doc(
     entity_id: str | None = None,
     uncovered_parameters: Iterable[str] | None = None,
     approved_source_keys: Iterable[str] = (),
-    pinned_cells: Iterable[tuple[str, str]] = (),
+    satisfied_cells: Iterable[tuple[str, str]] = (),
 ) -> list[Candidate]:
     """Validate and return normalized candidates from a search JSON artifact.
 
@@ -322,9 +353,9 @@ def validate_search_doc(
     errors.extend(_reference_subquery_context_errors(doc, schema))
 
     approved = {str(key).strip() for key in approved_source_keys if str(key).strip()}
-    pinned = {
+    satisfied = {
         (str(entity).strip(), str(parameter).strip())
-        for entity, parameter in pinned_cells
+        for entity, parameter in satisfied_cells
         if str(entity).strip() and str(parameter).strip()
     }
     seen_keys: set[str] = set()
@@ -355,6 +386,12 @@ def validate_search_doc(
                 errors.append(f"{where}: missing {field}")
         if not candidate.source_url:
             errors.append(f"{where}: missing source_url")
+        if schema.is_auto and not is_open_access_notes(candidate.access_notes):
+            errors.append(
+                f"{where}: Auto mode requires open-access/openly inspectable evidence; "
+                "access_notes must explicitly confirm full public access and must not "
+                "indicate a paywall, subscription, login, purchase, or access request"
+            )
         if candidate.quality_estimate and candidate.quality_estimate not in allowed_quality:
             errors.append(
                 f"{where}: quality_estimate {candidate.quality_estimate!r} is not "
@@ -384,10 +421,10 @@ def validate_search_doc(
                     f"{where}: parameter {parameter!r} does not apply to entity {entity!r}"
                 )
                 continue
-            if (entity, parameter) in pinned:
+            if (entity, parameter) in satisfied:
                 errors.append(
-                    f"{where}: field_coverage includes pinned cell ({entity!r}, {parameter!r}); "
-                    "pinned inputs must be skipped"
+                    f"{where}: field_coverage includes satisfied cell ({entity!r}, {parameter!r}); "
+                    "satisfied shared inputs must be skipped"
                 )
             if entity == GLOBAL_ENTITY_ID:
                 reference_parameters.append(parameter)
@@ -441,7 +478,7 @@ def validate_search_file(
     entity_id: str | None = None,
     uncovered_parameters: Iterable[str] | None = None,
     approved_source_keys: Iterable[str] = (),
-    pinned_cells: Iterable[tuple[str, str]] = (),
+    satisfied_cells: Iterable[tuple[str, str]] = (),
 ) -> list[Candidate]:
     """Load and validate a search JSON file."""
 
@@ -453,7 +490,7 @@ def validate_search_file(
         entity_id=entity_id,
         uncovered_parameters=uncovered_parameters,
         approved_source_keys=approved_source_keys,
-        pinned_cells=pinned_cells,
+        satisfied_cells=satisfied_cells,
     )
 
 

@@ -27,18 +27,27 @@ real locator, omit it.
 The analyst provides:
 
 - `{{schema_context_json}}` - the full `tea-schema.json` or a faithful excerpt
-  containing `display_name`, `functional_unit`, `basis`, `entities`,
+  containing `execution_mode`, `display_name`, `functional_unit`, `basis`, `entities`,
   `parameters`, and `defaults`.
 - `{{entities_in_scope}}` - optional JSON array of entity ids to cover. Default:
   every entity in the schema.
-- `{{pinned_cells}}` - optional JSON array of `[entity, parameter]` pairs
-  loaded from `pinned-inputs.csv`.
+- `{{satisfied_cells}}` - optional JSON array of `[entity, parameter]` pairs
+  already satisfied by comparison shared inputs.
 - `{{candidate_cap}}` - optional maximum candidate count. Default:
   `schema.defaults.master_list_candidate_cap`; if absent, use 15.
 
 Use the schema as the only source of truth for entity ids, parameter ids,
 applicability, `first_class`, `reference_value`, `context_free`, units, market
 basis, and display vocabulary.
+
+If `execution_mode` is `auto`, search specifically for evidence whose relevant
+full text, table, dataset, or official page is publicly inspectable without a
+subscription, institutional login, purchase, or access request. Favor
+government and institutional repositories, open-access journals/preprints,
+official public datasets, and stable public technical reports. Add terms such
+as `open access`, `full text`, `PDF`, `repository`, or `dataset` when useful.
+Do not emit a paywalled candidate merely because its title or abstract is
+visible.
 
 ---
 
@@ -50,7 +59,7 @@ Build the allowed coverage matrix from the schema:
   the parameter is not `reference_value` and its `applies_to` is `"all"` or
   explicitly includes that entity id.
 - For reference-value parameters, use the reserved global entity id `REF`.
-- Exclude every cell listed in `{{pinned_cells}}`. Pinned cells are already
+- Exclude every cell listed in `{{satisfied_cells}}`. Shared inputs are already
   authoritative and must not be searched again.
 - Never invent entity ids or parameter ids.
 - Never list a parameter under an entity unless the schema says it applies.
@@ -74,8 +83,9 @@ estimates. If the schema uses the default tags:
 - `A` - peer-reviewed or audited primary measurement at relevant scale/boundary.
 - `B` - government, institute, standards-body, or major industry-association
   report/dataset.
-- `C` - reputable secondary source, modeled estimate, or paywalled industry
-  source with clear metadata.
+- `C` - reputable secondary source or modeled estimate. In human-gated mode
+  this may include a paywalled industry source with clear metadata; Auto mode
+  may not use it unless an openly accessible full-text copy is located.
 - `D` - weak but locatable engineering fallback.
 
 Prefer `A`/`B`. Use `D` only when it is the best locatable candidate for an
@@ -109,7 +119,7 @@ Return a single JSON object and no prose:
       "source_url": "https://official landing page, official PDF, institutional repository page, or publisher page",
       "doi": "optional DOI when distinct from source_url",
       "quality_estimate": "A",
-      "access_notes": "open access | paywall (publisher) | library subscription | technical report request | other",
+      "access_notes": "open access full text verified | publicly accessible official dataset | paywall (human-gated mode only) | other",
       "field_coverage": [
         {
           "entity": "entity_id_or_REF",
@@ -146,5 +156,9 @@ Return a single JSON object and no prose:
 - Reference-value source candidates, when included, must use
   `"entity": "REF"` and a `reference_value` parameter.
 - Context-free reference sub-queries must not contain TEA/system context.
+- In Auto mode, every candidate's `access_notes` must explicitly confirm that
+  the relevant evidence is publicly inspectable in full. Paywalled,
+  subscription-only, login-only, purchase-only, abstract-only, and
+  request-access candidates are forbidden.
 - If coverage is uncertain, leave the cell uncovered and call it out in
   `coverage_summary.parameters_likely_to_need_gap_fill`.

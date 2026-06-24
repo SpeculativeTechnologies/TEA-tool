@@ -32,7 +32,8 @@ human-in-the-loop review gates that keep wrong/contaminating data out.
   is the populated inputs; running the model and any back-cast is the analyst's
   job, outside the tool.
 - Multi-system in one run. One run = one system/configuration (D14). Comparison
-  TEAs are supported via **pinned inputs** (§7), not a route dimension.
+  TEAs are supported via a **comparison wrapper with shared inputs** (§7), not
+  a route dimension inside `tea-schema.json`.
 - Industrial-only. Every industrial assumption (per-kg-output, yield/mass
   balance, CapEx/CEPCI, process routes, stoichiometry) is now optional/declared,
   not hardcoded.
@@ -49,16 +50,16 @@ human-in-the-loop review gates that keep wrong/contaminating data out.
 | D4 | Two-doc division | **Scope doc** = narrative + entity decomposition + boundaries/basis/scenarios/metrics/validation. **Schema doc** = structured data spec (entities, parameters, applicability, per-parameter rule-*type*, reference targets, scope-relevance, quality tags, estimation policy). Stage 0 maps rule-types → concrete convention tables and **scaffolds** them. |
 | D5 | Non-industrial test case | Design against a **named hypothetical: a managed compute / AI-inference service TEA** (cost per service unit; cost-center entities; no yield/CEPCI/per-kg). |
 | D6 | Normalization | **Rule-type library dispatched by schema**: `MONETARY` / `INTENSITY` / `FRACTION` / `RATE` / `CAPEX` / `PASSTHROUGH`(+`JSON`/`TEXT`). "Functional unit" generalizes "per-kg-output"; CEPCI is one `MONETARY` index option among CPI/PPI/none. |
-| D7 | Relevance gate | **Keep it, generalized as a per-entity "scope frame," on by default.** Same `clear`/`hold`/`reject` + batch-resolution + hard block. `incumbent-route.csv` → generic scope-frame in the schema config. |
-| D8 | Constants | **One unified pipeline + `context_free` flag.** Reference values are schema parameters searched context-free *within* master-list/gap-fill. The separate C0–C3 lane, constants CSVs, constants scripts, and constants prompts are **deleted**. Sources land in the unified `Sources.csv` with a role flag. |
-| D9 | Estimation method | **Comparables-first kept** (rubric dimensions declared by the schema); **first-principles becomes free-form-but-disciplined** (shown work + cited sources + confidence). The industrial method library (Faraday/Langmuir/sensible-heat) is dropped as a hardcoded thing. |
+| D7 | Relevance gate | Each entity has a **scope frame** in the schema config. Extraction assigns `clear`/`hold`/`reject`; unresolved holds are batch-resolved and block downstream steps. |
+| D8 | Reference values | **One unified pipeline + `context_free` flag.** Reference values are schema parameters searched context-free *within* master-list/gap-fill. Sources land in the unified `Sources.csv` with a role flag. |
+| D9 | Estimation method | **Comparables-first** uses rubric dimensions declared by the schema. **First-principles** estimates require shown work, cited sources, and confidence. |
 | D10 | Estimate sources | Populator **emits its cited sources as structured rows**; the append step registers them in `Sources.csv` with a **`source_role`** flag (`extraction`/`estimate`/`both`), **URL-only** (not downloaded). `estimate_justification` keeps the derivation but references the registered keys. |
 | D11 | Model stage | **Produce inputs only; analyst runs the model.** No model execution, no back-cast inside the tool. (`run_tea_model.py`/`run_financial_model.py` are NOT generalized.) |
 | D12 | Source URL column | Add **`source_url`** to **all** source-key-bearing files (Audit, Main Input, every review queue), **auto-denormalized from `Sources.csv`** whenever a `source_key` is written. `Sources.csv` stays the single source of truth. |
 | D13 | Vocabulary | Code/config/CSVs use **neutral `entity` + `parameter`**; the schema doc declares a per-TEA **display label** (`process unit`, `cost center`, …) for human-facing output. |
 | D14 | Numbering | **Named phases + `Phase.Stage` actions**, one discrete action per stage (§6). |
-| D15 | Re-scoping | **Dropped entirely.** Unpopulatable cells go to estimation (Phase 6) or are left as documented gaps. No re-lump stage/scripts. |
-| D16 | Comparison / build | **One system per run** + **pinned inputs** (§7) for carrying shared data across routes (raw → normalized → locked, per-cell, manual). Folder = **sibling at repo root**. **Port Ti as an industrial regression fixture** (Run 2 = oracle) + compute hypothetical as the non-industrial example. **Fresh rewrite** (old code = reference). |
+| D15 | Completeness exits | Unpopulatable cells go to estimation (Phase 6) or remain as documented gaps. |
+| D16 | Comparison / build | **One system per option run** + a **comparison wrapper** for carrying shared raw evidence across options. Shared inputs are explicit mappings into option schemas and materialize as `input_origin=shared`. |
 
 ---
 
@@ -76,7 +77,7 @@ human-in-the-loop review gates that keep wrong/contaminating data out.
         ▼
   ┌─────────────────────────┐
   │ Stage 0.2  build CSVs    │  Audit.csv · Sources.csv · Main Input.csv (skeleton)
-  └─────────────────────────┘     + optional pinned-inputs.csv loaded here
+  └─────────────────────────┘     + optional comparison shared inputs materialized after build
         │
         ▼     every deterministic script below READS tea-schema.json
   Phase 1 Master-list ─ Phase 2 Gap-fill ─ Phase 3 Extract ─ Phase 4 Normalize/Consolidate
@@ -204,9 +205,8 @@ For the **compute-service** instance the same shape holds with:
 | `CAPEX` | special `MONETARY`: parse to source-year USD, **carry basis-year + basis-scale**, no rebase/escalation here; QA-only `review_*` comparable | `capex_usd`, `capex_form`, `capex_basis_year`, `capex_basis_scale`, `capex_notes`, `review_*` |
 | `PASSTHROUGH`/`JSON`/`TEXT` | no transform (structured/free-text fields, e.g. `stoichiometry`-like JSON, notes) | — |
 
-Ambiguous/unparseable rows are `FLAGGED:` and routed to the Phase 4.2 queue
-(unchanged mechanism from Vicky TEA). The hard block on unresolved scope-holds
-(Phase 3.2) stays.
+Ambiguous/unparseable rows are `FLAGGED:` and routed to the Phase 4.2 queue.
+Unresolved scope holds in Phase 3.2 block downstream steps until resolved.
 
 ---
 
@@ -221,7 +221,8 @@ Legend: **(L)** LLM agent · **(H)** human gate · **(S)** deterministic script.
   `conventions/*.csv` (empty, or auto-filled where public — CPI/CEPCI/currency).
 - **0.2 Build CSVs (S)** — deterministic `build_csvs.py` reads the config →
   empty `Audit.csv`, `Sources.csv`, and `Main Input.csv` with the (entity,
-  parameter) skeleton. **Load pinned inputs** here if provided (§7).
+  parameter) skeleton. For comparison projects, materialize shared inputs after
+  each option run is built (§7).
 
 ### Phase 1 — Master-list
 - **1.1 Search (L)** — broad search for high-coverage sources across
@@ -264,7 +265,7 @@ Legend: **(L)** LLM agent · **(H)** human gate · **(S)** deterministic script.
 
 ### Phase 5 — Review
 - **5.1 Completeness review (H)** — analyst judges coverage/quality; exits:
-  proceed / run another gap-fill round / accept gaps. (No re-lump — D15.)
+  proceed / run another gap-fill round / accept gaps.
 
 ### Phase 6 — Estimation (fill remaining blanks)
 - **6.1 Estimate (L)** — orchestrator fans out per entity: `comparables_first`
@@ -283,37 +284,35 @@ Legend: **(L)** LLM agent · **(H)** human gate · **(S)** deterministic script.
 ### Phase 7 — Hand off
 - **7.1 Finalize inputs (S)** — emit the final `Main Input.csv` + reference
   values + a run manifest (schema config, source counts, coverage, quality
-  distribution, pinned cells, residual gaps). **Stop here** — the analyst runs
+  distribution, shared inputs, residual gaps). **Stop here** — the analyst runs
   their own model (D11). If `validation_targets` were declared, surface them in
   the manifest for the analyst's convenience; the tool does not back-cast.
 
 ---
 
-## 7. Pinned inputs (D14, D16)
+## 7. Comparison shared inputs (D14, D16)
 
-Mechanism: an optional `pinned-inputs.csv` (Audit-shaped: `entity`, `parameter`,
-`raw_value`, `raw_units`, `raw_basis_*`, `source_key`, `source_url`, `notes`),
-listing each pinned cell **manually, per-cell**.
+Comparison TEAs are bundles of normal option runs, not one shared route schema.
+Each option keeps its own `tea-schema.json`; the comparison wrapper supplies a
+shared frame and reusable raw evidence mapped explicitly into option cells.
 
-- Loaded at **Stage 0.2** as authoritative Audit rows with `relevance_status =
-  pinned` (a reserved status above `clear`).
-- The skeleton marks those (entity, parameter) cells **pinned**, so **search
-  (1.x), extraction (3.x), and estimation (6.x) skip them** ("don't search for
-  these anymore").
-- **Phase 4 normalizes them** (raw → normalized, via the same rule-type) so
-  they're consistent with the pipeline (D-form: "raw, normalized-then-locked").
-- **Phase 4.4 always selects the pinned row** for its cell (locked; ranks above
-  all quality tags). Provenance (`source_key`/`source_url`) is preserved.
-- Pinned cells must validate against the schema (entity + parameter exist);
-  mismatches are reported, not silently dropped.
+Mechanism:
 
-**Comparison-TEA flow:** run system 1 → from its `Main Input`, the analyst
-hand-builds a `pinned-inputs.csv` of the cells to hold constant (shared
-reference values, shared downstream entities) → run system 2 with that file →
-those cells are locked/identical, everything else is researched fresh.
-
-> Bulk pin-set helpers were declined (manual per-cell). A future convenience
-> could extract a pin-set from a prior `Main Input`; out of scope for v1.
+- `comparison-frame.json` declares the comparison id, display name, shared
+  functional unit, shared basis, headline metrics, and option run folders.
+- `shared-sources.csv` is the canonical provenance table for reusable evidence.
+- `shared-inputs.csv` stores reusable raw values, units, basis fields, source
+  keys, page refs, quality tags, and notes.
+- `shared-input-mappings.csv` maps `shared_input_id` to
+  `option_id, entity, parameter`; mappings must validate against each option
+  schema.
+- `scripts/materialize_shared_inputs.py` writes mapped rows into option
+  `Audit.csv`/`Main Input.csv` with `relevance_status=clear` and
+  `input_origin=shared`, and copies shared sources into option `Sources.csv`.
+- Search, extraction, and estimation skip cells already satisfied by
+  `input_origin=shared`.
+- Consolidation treats shared rows as authoritative for their mapped cell while
+  preserving normal normalization and provenance.
 
 ---
 
@@ -329,14 +328,14 @@ Vicky TEA in **bold**.
 - **`Audit.csv`** — entity/parameter rows (neutral column names `entity`,
   `parameter`), raw + basis fields, quality tag, normalized/CapEx/review fields,
   `selected_for_model`, `cross_check_delta`, extractor notes, `relevance_status`
-  (+ `pinned`), the review-status columns, `estimate_justification`, **plus
+  (+ `input_origin`), the review-status columns, `estimate_justification`, **plus
   `source_url`** (denormalized).
 - **`Main Input.csv`** — derived; **`source_url`** added; reference-value rows
   carried under a reserved global entity (e.g. `REF`) or `scope=global` marker.
 - **Review queues** (`held_questions.csv`, `normalization_flags.csv`,
   `value_disagreements.csv`, `held_estimates.csv`, scope-fit decisions) — each
   gains **`source_url`** (D12).
-- **`pinned-inputs.csv`** — see §7.
+- **comparison shared-input CSVs** — see §7.
 
 A small shared helper (`source_url_for(source_key)`) denormalizes URLs from
 `Sources.csv` wherever a `source_key` is written.
@@ -356,7 +355,8 @@ General TEA tool/
     scope.template.md
     data-requirements.template.md
     tea-schema.schema.json     ← JSON Schema the config must validate against
-    pinned-inputs.template.csv
+    shared-sources.template.csv  shared-inputs.template.csv
+    shared-input-mappings.template.csv
   prompts/
     stage0-schema-compile.md
     master-list-search.md  gap-fill-search.md  extractor.md
@@ -368,7 +368,8 @@ General TEA tool/
     normalize.py  consolidate.py
     sweep_*.py / apply_*.py   (holds, flags, disagreements, held-estimates)
     build_estimation_manifest.py  append_estimation_rows.py
-    load_pinned_inputs.py  finalize_inputs.py
+    validate_comparison_project.py  materialize_shared_inputs.py
+    finalize_comparison.py  finalize_inputs.py
     lib/  (schema loader, rule-type transforms, source_url helper, csv io)
   tests/                       ← unit + the two end-to-end fixtures
   examples/
@@ -378,7 +379,7 @@ General TEA tool/
       scope.md  data-requirements.md  tea-schema.json
   runs/                        ← per-run working folders (gitignored bulk)
     <run-id>/  (the two docs, schema config, working CSVs, source buckets,
-               search-history/, review-history/, run-manifest.md)
+               search-history/, run-manifest.md)
 ```
 
 Each **run** is self-contained under `runs/<id>/` (carries its input docs +
@@ -398,7 +399,7 @@ diffable — the disciplined version of Vicky TEA's `Run 2/` snapshotting.
   hand-seeded Audit with **no** `FRACTION`/`CEPCI`/per-kg paths exercised —
   proving the industrial assumptions are truly optional.
 - **Unit tests** per script (schema loader, each rule-type transform, the
-  source_url denormalizer, pinned-input skip/lock logic, each sweep/apply).
+  source_url denormalizer, shared-input skip/selection logic, each sweep/apply).
 - Carry forward the spirit of Vicky TEA's 56-test suite; expand to cover both
   fixtures.
 
@@ -419,8 +420,8 @@ parallel; **T9–T11** integrate. Acceptance criteria are in `TASKS.md`.
 | **T5** | Normalization: rule-type library + `normalize.py` dispatcher, convention scaffolding, flags sweep/apply + normalization-agent prompt | T1, T2 | T3, T4, T6–T8 |
 | **T6** | Consolidation: `consolidate.py` (config-driven ranking), scope-fit tiebreaker agent, disagreement sweep/apply, Main Input emission + `source_url` | T1, T2 | T3–T5, T7, T8 |
 | **T7** | Estimation: orchestrator/scout/populator (rubric from schema; free-form FP), `build_estimation_manifest.py`, `append_estimation_rows.py`, estimate-sources→Sources.csv role flag, held-estimates sweep/apply | T1, T2 | T3–T6, T8 |
-| **T8** | Pinned inputs: `pinned-inputs` schema + `load_pinned_inputs.py` + skip/lock wiring across search/extract/estimate/consolidate + `finalize_inputs.py` | T1, T2 | T3–T7 |
-| **T9** | Docs: `framework.md`, `workflow.md`, `README.md`, `templates/` (scope + data-requirements + pinned templates) | T1 (config shape) | T3–T8 (draft early, finalize late) |
+| **T8** | Comparison shared inputs: comparison frame + shared CSV contracts + validation/materialization/finalization scripts + skip/selection wiring across search/extract/estimate/consolidate + `finalize_inputs.py` | T1, T2 | T3–T7 |
+| **T9** | Docs: `framework.md`, `workflow.md`, `README.md`, `templates/` (scope + data-requirements + shared-input templates) | T1 (config shape) | T3–T8 (draft early, finalize late) |
 | **T10** | Worked examples: port `examples/ti-6al-4v/` (scope+schema docs + config + `expected/Main Input.csv` oracle) and author `examples/compute-service/` | T1; Ti e2e needs T3–T7 | T9 |
 | **T11** | Test suite: unit tests per script + Ti regression e2e + compute smoke e2e; CI wiring | the script it tests | runs alongside each lane |
 
@@ -441,7 +442,8 @@ end-to-end regression is the final integration gate.
   `schema-open-questions.md` and (if interactive) asks the analyst; it does not
   proceed past genuine ambiguity.
 - **Quality tags** stay A/B/C/D/E (E = estimate; analyst-override → D), and
-  `pinned` is a `relevance_status`, not a quality tag.
+  `input_origin=shared` marks comparison shared inputs while
+  `relevance_status` remains `clear`/`hold`/`reject`.
 - **`run_tea_model.py` / `run_financial_model.py` are out of scope** (D11) and
   not ported.
 - **Functional unit** is declared once in the scope doc and is the default

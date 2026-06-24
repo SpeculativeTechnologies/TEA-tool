@@ -4,8 +4,8 @@ For each schema-declared (entity, parameter) cell, the consolidator:
 
 1. Blocks while current >=30% value disagreements lack analyst verdicts.
 2. Blocks while same-quality top candidates need a scope-fit decision.
-3. Ranks eligible rows by pinned status, quality tag, scope-fit decision, year,
-   then source_key.
+3. Ranks shared-input rows as authoritative, then quality tag,
+   scope-fit decision, year, and source_key.
 4. Sets selected_for_model/cross_check_delta in Audit and writes Main Input.
 
 Examples:
@@ -21,14 +21,17 @@ from pathlib import Path
 
 from lib.consolidation import (
     DEFAULT_VALUE_DISAGREEMENT_THRESHOLD,
+    FixedInputConflictError,
     HeldEstimateRowsError,
     ScopeFitDecisionRowsError,
     ValueDisagreementRowsError,
     build_main_input_rows,
     fill_source_urls,
+    find_fixed_conflicts,
     find_scope_fit_decision_problems,
     find_unresolved_held_estimates,
     find_value_disagreements,
+    format_fixed_conflict_error,
     format_held_estimate_error,
     format_scope_fit_error,
     format_value_disagreement_error,
@@ -106,6 +109,10 @@ def consolidate(
     rows = read_audit_rows(audit_path)
     fill_source_urls(rows, sources_path)
     validate_audit_cells(rows, schema)
+
+    fixed_conflicts = find_fixed_conflicts(rows, schema)
+    if fixed_conflicts:
+        raise FixedInputConflictError(format_fixed_conflict_error(fixed_conflicts))
 
     disagreements = find_value_disagreements(rows, schema, value_disagreement_threshold)
     if disagreements:
@@ -204,6 +211,9 @@ def main(argv: list[str] | None = None) -> int:
             in_place=args.in_place,
             dry_run=args.dry_run,
         )
+    except FixedInputConflictError as exc:
+        print(f"BLOCKED: {exc}", file=sys.stderr)
+        return 7
     except ValueDisagreementRowsError as exc:
         print(f"BLOCKED: {exc}", file=sys.stderr)
         return 4

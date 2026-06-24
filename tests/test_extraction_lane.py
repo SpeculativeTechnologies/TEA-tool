@@ -136,7 +136,7 @@ class ExtractionManifestTests(unittest.TestCase):
             params = [p["id"] for p in entry["coverage_targets"][0]["parameters"]]
             self.assertEqual(params, ["electricity", "thermal_energy"])
 
-    def test_manifest_skips_pinned_cells(self):
+    def test_manifest_skips_satisfied_shared_cells(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             search_json = tmp_path / "master-list.json"
@@ -148,7 +148,7 @@ class ExtractionManifestTests(unittest.TestCase):
             (source_dir / "1A_useful-source.pdf").write_text("downloaded", encoding="utf-8")
             main = tmp_path / "Main Input.csv"
             row = {name: "" for name in MAIN_INPUT_FIELDNAMES}
-            row.update({"entity": "1A", "parameter": "electricity", "pinned": "TRUE"})
+            row.update({"entity": "1A", "parameter": "electricity", "input_origin": "shared"})
             write_rows(main, MAIN_INPUT_FIELDNAMES, [row])
 
             manifest = build_manifest(

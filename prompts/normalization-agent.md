@@ -33,8 +33,11 @@ recipes, or conventions. Use `tea-schema.json`, the row provenance, and
   `capex_basis_scale`, `capex_basis_scale_units`, and `capex_notes` in
   source-year base currency. Do not fill `normalized_value` for CAPEX. `review_*`
   fields are QA-only comparables.
-- If a defensible calculation is impossible, leave model outputs blank and set
-  `normalization_status = hold` with a precise note in `normalization_decision`.
+- In Auto with Human Gates mode, if a defensible calculation is impossible,
+  leave model outputs blank and set `normalization_status = hold` with a precise
+  note in `normalization_decision`.
+- In Auto mode, do not leave the workflow on hold: reject the unusable evidence
+  row, record `AUTO:` reasoning, and route the still-blank cell to estimation.
 
 ## Required Row Updates
 

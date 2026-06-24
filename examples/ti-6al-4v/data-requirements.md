@@ -24,8 +24,6 @@ Each entity has a scope frame used by extraction and scope-fit review.
 | electricity | Electricity | INTENSITY | all | true | kWh per entity output. |
 | thermal_energy | Thermal energy | INTENSITY | all | true | MJ per entity output. |
 | feedstock_quantity | Feedstock quantity | INTENSITY | all | false | kg feedstock per entity output. |
-| stoichiometry | Stoichiometry | JSON | 1A, 1B, 1C, 2A, 2B | false | Structured reaction stoichiometry. |
-| output_notes | Output / co-product notes | TEXT | all | false | Free-text notes. |
 | consumables.cl2_makeup | Cl2 make-up | INTENSITY | 1A | false | kg per entity output. |
 | consumables.argon | Argon | INTENSITY | 1B, 5 | false | kg per entity output. |
 | Ti_yield | Ti yield | FRACTION | 1A, 1B, 4, 5, 6 | false | Element-of-interest basis. |
@@ -33,6 +31,10 @@ Each entity has a scope frame used by extraction and scope-fit review.
 | V_yield | V yield | FRACTION | 4, 5, 6 | false | Element-of-interest basis. |
 | Mg_recovery | Mg recovery | FRACTION | 1C | false | Element-of-interest basis. |
 | Cl2_recovery | Cl2 recovery | FRACTION | 1C | false | Element-of-interest basis. |
+
+Every model-input cell is numeric. Descriptive context such as reaction
+stoichiometry and co-product notes stays in `scope.md`, not as `JSON`/`TEXT`
+cells (which the schema rejects).
 
 ## Reference values
 

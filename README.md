@@ -8,6 +8,21 @@ The workflow is domain-agnostic. One run can describe an industrial process,
 a managed compute service, a logistics workflow, or another single system, as
 long as the analyst can specify the scope and data requirements clearly.
 
+## New Users: The Orchestrator
+
+If you have a rough idea rather than finished input documents, invoke the
+explicitly-invoked **`/tea`** skill
+(`.claude/skills/tea/`, with a Codex shim under `.agents/` and
+`.codex/`). It runs intake in plain language, writes the three starting
+documents for you (`scope.md`, `data-requirements.md`, `model-requirements.md`),
+keeps durable run state and an issue ledger via `scripts/orchestrator.py`, and
+drives the workflow below to finalized inputs. You approve the starting documents
+and the consequential judgments; it handles schemas, files, and bookkeeping.
+
+It offers two modes — **Guided** (pauses for consequential decisions) and
+**Hands-off** (resolves downstream gates and documents assumptions). Both stop at
+populated inputs; neither builds or runs the model.
+
 ## What You Provide
 
 Each run starts with two documents in a run folder:
@@ -18,23 +33,35 @@ Each run starts with two documents in a run folder:
   applicability, rule types, quality tags, estimation policy, and reference
   values.
 
+Setup also asks for an execution mode. **Auto with Human Gates** is the default.
+**Auto** lets the AI resolve each gate without interrupting the stage flow and
+records its reasoning. Both modes are numeric-only and gap-free: every parameter
+resolves to one finite numeric value (`JSON`/`TEXT` parameters are rejected), and
+finalization requires every schema cell to be filled in either mode — Guided
+resolves each blank by an approved estimate or a supplied value, Auto estimates
+it. Because Auto can only inspect open evidence, it searches specifically for
+open-access full text, public datasets, government/institutional reports,
+repository copies, and other publicly accessible sources.
+
 Use these templates:
 
 - `templates/scope.template.md`
 - `templates/data-requirements.template.md`
-- `templates/pinned-inputs.template.csv` when carrying locked values from a
-  prior run.
+- `templates/shared-*.template.csv` when building a comparison wrapper with
+  reusable shared assumptions.
 
 ## What The Tool Produces
 
 - `tea-schema.json`: machine-readable run contract.
-- `Audit.csv`: all extracted, estimated, pinned, and normalized evidence rows.
+- `Audit.csv`: all extracted, shared, estimated, and normalized evidence rows.
 - `Sources.csv`: accepted source registry with `source_url` and `source_role`.
 - `Main Input.csv`: one selected model-ready row per schema cell.
 - `Reference Values.csv`: global context-free values extracted from
   `Main Input.csv`.
-- `run-manifest.md`: coverage, source counts, quality distribution, pinned
-  cells, gaps, and validation targets.
+- `run-manifest.md`: coverage, source counts, quality distribution, shared
+  inputs, gaps, and validation targets.
+- `auto-review.md` in Auto mode: AI decisions, assumptions, estimates, flags,
+  and technical errors.
 
 The final stop is populated inputs. Model execution and back-casting stay
 outside this tool.
@@ -84,9 +111,8 @@ Then follow `workflow.md` from Phase 1 through Phase 7.
   extracted values.
 - Reference value: a global market/background value searched without TEA
   context and stored under entity `REF`.
-- Pinned input: an analyst-supplied cell treated as authoritative, normalized
-  like any other row, skipped by search/extraction/estimation, and locked in
-  consolidation.
+- Comparison shared input: reusable raw evidence mapped explicitly into one or
+  more option schemas with `input_origin=shared`.
 
 ## Development
 

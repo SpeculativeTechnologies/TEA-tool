@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Iterable
 
 from lib.csvio import read_rows
-from lib.pinned import read_pinned_cells
+from lib.shared_inputs import read_satisfied_cells
 from lib.schema import GLOBAL_ENTITY_ID, Schema, load_schema
 from lib.search import Candidate, SearchValidationError, source_file_present_for, validate_search_file
 
@@ -102,12 +102,12 @@ def _coverage_targets(
     schema: Schema,
     candidate: Candidate,
     *,
-    pinned_cells: set[tuple[str, str]] | None = None,
+    satisfied_cells: set[tuple[str, str]] | None = None,
 ) -> list[dict[str, object]]:
-    pinned_cells = pinned_cells or set()
+    satisfied_cells = satisfied_cells or set()
     grouped: dict[str, list[str]] = {}
     for entity, parameter in candidate.field_coverage:
-        if (entity, parameter) in pinned_cells:
+        if (entity, parameter) in satisfied_cells:
             continue
         grouped.setdefault(entity, [])
         if parameter not in grouped[entity]:
@@ -162,7 +162,7 @@ def build_manifest(
     registry = _source_registry(sources_path)
     output_dir = Path(output_dir)
     source_dirs = [Path(path) for path in source_dirs]
-    pinned_cells = read_pinned_cells(main_input_path=main_input_path, audit_path=audit_path)
+    satisfied_cells = read_satisfied_cells(main_input_path=main_input_path, audit_path=audit_path)
 
     entries: list[dict[str, object]] = []
     skipped_unregistered: list[str] = []
@@ -185,7 +185,7 @@ def build_manifest(
                 f"source_url mismatch for {source_key!r}: Sources.csv has {source_url!r}, "
                 f"candidate JSON has {candidate.source_url!r}"
             )
-        coverage_targets = _coverage_targets(schema, candidate, pinned_cells=pinned_cells)
+        coverage_targets = _coverage_targets(schema, candidate, satisfied_cells=satisfied_cells)
         if not coverage_targets:
             continue
 
@@ -220,7 +220,7 @@ def build_manifest(
             "unregistered": skipped_unregistered,
             "registered_but_no_file": skipped_no_file,
             "registered_but_no_candidate": skipped_no_candidate,
-            "pinned_cells": [list(cell) for cell in sorted(pinned_cells)],
+            "satisfied_cells": [list(cell) for cell in sorted(satisfied_cells)],
         },
     }
 
@@ -261,13 +261,13 @@ def main(argv: list[str] | None = None) -> int:
         "--main-input",
         type=Path,
         default=Path("Main Input.csv"),
-        help="Main Input CSV used to skip pinned cells",
+        help="Main Input CSV used to skip satisfied shared cells",
     )
     parser.add_argument(
         "--audit",
         type=Path,
         default=Path("Audit.csv"),
-        help="Audit CSV used to skip pinned cells",
+        help="Audit CSV used to skip satisfied shared cells",
     )
     parser.add_argument("--dry-run", action="store_true", help="Print summary without writing")
     args = parser.parse_args(argv)

@@ -1,7 +1,8 @@
 # Gap-fill Search Prompt
 
-Run once per entity after the master-list round and human approval/download
-gate. The goal is to find targeted source candidates for the specific uncovered
+Run once per entity after the master-list round and its approval/download gate
+(analyst-operated in Auto with Human Gates mode, AI-operated in Auto mode).
+The goal is to find targeted source candidates for the specific uncovered
 parameters that remain for one entity, plus any still-missing context-free
 reference values.
 
@@ -32,8 +33,8 @@ The analyst provides:
   for this entity.
 - `{{missing_reference_parameters}}` - optional JSON array of context-free
   reference-value parameter ids still blank under `REF`.
-- `{{pinned_cells}}` - optional JSON array of `[entity, parameter]` pairs
-  loaded from `pinned-inputs.csv`.
+- `{{satisfied_cells}}` - optional JSON array of `[entity, parameter]` pairs
+  already satisfied by comparison shared inputs.
 - `{{approved_master_list_source_keys}}` - JSON array of already-approved
   master-list source keys.
 - `{{candidate_cap}}` - optional maximum candidate count. Default:
@@ -41,6 +42,12 @@ The analyst provides:
 
 Use the schema as the only source of truth for parameter ids, applicability,
 `first_class`, `reference_value`, `context_free`, units, and market basis.
+
+If `execution_mode` is `auto`, this is an open-access-only search. Search
+specifically for publicly inspectable full text, tables, datasets, repository
+copies, government publications, open journals/preprints, and official public
+technical material. Do not return a source when only its citation, abstract,
+catalog record, or paywalled landing page is visible.
 
 ---
 
@@ -54,8 +61,8 @@ For normal entity coverage:
   source is expected to cover them, but a non-first-class parameter alone is not
   enough to spend a candidate slot.
 - Do not list parameters outside `{{uncovered_parameters}}`.
-- Do not list a cell included in `{{pinned_cells}}`; pinned inputs are already
-  authoritative and must not be searched again.
+- Do not list a cell included in `{{satisfied_cells}}`; shared inputs are
+  already authoritative and must not be searched again.
 - Do not list any entity other than `{{entity}}`.
 
 For still-missing reference values:
@@ -63,7 +70,7 @@ For still-missing reference values:
 - Use `reference_value_subqueries` for context-free search instructions.
 - If a source candidate is expected to cover a reference value directly, put it
   under `"entity": "REF"` with the reference parameter id.
-- Do not search or list a `REF` cell included in `{{pinned_cells}}`.
+- Do not search or list a `REF` cell included in `{{satisfied_cells}}`.
 - Reference-value queries and candidates must not mention the TEA, system,
   product, functional unit, route, or entity names.
 
@@ -120,7 +127,7 @@ Return a single JSON object and no prose:
       "source_url": "https://official landing page, official PDF, institutional repository page, or publisher page",
       "doi": "optional DOI when distinct from source_url",
       "quality_estimate": "A",
-      "access_notes": "open access | paywall (publisher) | library subscription | technical report request | other",
+      "access_notes": "open access full text verified | publicly accessible official dataset | paywall (human-gated mode only) | other",
       "field_coverage": [
         {
           "entity": "{{entity}}",
@@ -154,3 +161,7 @@ Return a single JSON object and no prose:
 - `source_url` must be HTTP(S) and must not be a DOI resolver URL.
 - If a parameter cannot be covered by a credible source, leave it out of
   candidates and list it in `residual_gap_assessment`.
+- In Auto mode, candidates must be openly accessible without subscription,
+  login, purchase, library access, or an access request. If no such evidence is
+  found, leave the parameter for transparent estimation rather than citing
+  inaccessible evidence.

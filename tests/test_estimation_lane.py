@@ -9,10 +9,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from append_estimation_rows import EstimationValidationError, append_estimation_rows  # noqa: E402
+from append_estimation_rows import (  # noqa: E402
+    EstimationValidationError,
+    append_estimation_rows,
+    validate_estimation_payload,
+)
 from apply_held_estimates import apply_held_estimates  # noqa: E402
 from build_estimation_manifest import build_manifest  # noqa: E402
 from lib.csvio import AUDIT_FIELDNAMES, MAIN_INPUT_FIELDNAMES, SOURCES_FIELDNAMES, read_rows, write_rows  # noqa: E402
+from lib.schema import Schema  # noqa: E402
 from sweep_held_estimates import HELD_ESTIMATES_FIELDNAMES, sweep_held_estimates  # noqa: E402
 
 
@@ -103,6 +108,22 @@ def first_principles_row(
     }
 
 
+class AutoEstimationAccessTests(unittest.TestCase):
+    def test_auto_estimates_require_open_access_citations(self):
+        data = json.loads(COMPUTE_SCHEMA.read_text(encoding="utf-8"))
+        data["execution_mode"] = "auto"
+        schema = Schema(data)
+        row = first_principles_row()
+        payload = {"schema_tea_id": schema.tea_id, "force_refresh": False, "rows": [row]}
+
+        with self.assertRaises(EstimationValidationError) as ctx:
+            validate_estimation_payload(payload, schema)
+        self.assertIn("open/public full-text access", str(ctx.exception))
+
+        row["cited_sources"][0]["access_notes"] = "open access full text verified"
+        validate_estimation_payload(payload, schema)
+
+
 class EstimationManifestTests(unittest.TestCase):
     def test_manifest_lists_blank_cells_and_respects_prior_e_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -137,7 +158,6 @@ class EstimationManifestTests(unittest.TestCase):
             self.assertNotIn("monthly_cost", blanks)
             self.assertNotIn("power_draw", blanks)
             self.assertIn("throughput", blanks)
-            self.assertIn("notes", blanks)
 
             refreshed = build_manifest(
                 schema_path=COMPUTE_SCHEMA,
@@ -167,14 +187,14 @@ class EstimationManifestTests(unittest.TestCase):
         self.assertEqual(one_c["estimation_policy"], "comparables_first")
         self.assertTrue(any(param["id"] == "specific_capex" for param in one_c["blank_parameters"]))
 
-    def test_manifest_skips_cells_marked_pinned_in_main_input(self):
+    def test_manifest_skips_cells_marked_shared_in_main_input(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             audit = root / "Audit.csv"
             main = root / "Main Input.csv"
             write_rows(audit, AUDIT_FIELDNAMES, [])
             row = {name: "" for name in MAIN_INPUT_FIELDNAMES}
-            row.update({"entity": "compute_hardware", "parameter": "monthly_cost", "pinned": "TRUE"})
+            row.update({"entity": "compute_hardware", "parameter": "monthly_cost", "input_origin": "shared"})
             write_rows(main, MAIN_INPUT_FIELDNAMES, [row])
 
             manifest = build_manifest(

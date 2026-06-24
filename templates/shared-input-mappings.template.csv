@@ -1,0 +1,2 @@
+shared_input_id,option_id,entity,parameter,notes
+example-electricity-price,incumbent,REF,electricity_price,Apply shared market electricity price to incumbent option

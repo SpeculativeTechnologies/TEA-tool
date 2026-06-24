@@ -18,6 +18,7 @@ Instantiate these from `estimation_manifest.json`:
 - `{{comparable_rubric.hard_rule}}`
 - `{{functional_unit}}`
 - `{{basis}}`
+- `{{execution_mode}}`
 
 ## Rules
 
@@ -32,6 +33,11 @@ Instantiate these from `estimation_manifest.json`:
 - Anchor sources must be URL-only structured source rows. No downloads are
   expected in the estimation lane.
 - Existing real extractions are anchors and warnings, not targets to overwrite.
+- In Auto mode, use only anchor evidence whose relevant full text, dataset, or
+  official page is openly inspectable. Search for repository copies, open
+  journals/preprints, government sources, and official public datasets. Do not
+  use paywalled, login-only, abstract-only, purchase-only, or request-access
+  sources.
 
 ## Output
 
@@ -53,6 +59,7 @@ Return one JSON object and no prose:
         "year": "2025",
         "publisher_or_journal": "Publisher",
         "source_url": "https://example.com/source",
+        "access_notes": "open access full text verified",
         "page_ref_hint": "Table or section hint",
         "why_relevant": "What this source can support for the blank parameters."
       }
@@ -102,4 +109,6 @@ For failure:
 - The rubric object has exactly one key per schema dimension.
 - `chosen_comparable.slug` and every `source_key` are kebab-case.
 - `source_url` values are HTTP(S) URLs.
+- In Auto mode, every anchor source includes `access_notes` explicitly
+  confirming open/public full-text access.
 - Failure output still includes the rubric for the strongest candidate.

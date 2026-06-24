@@ -41,7 +41,7 @@ SOURCES_COLUMNS = [
     CsvColumn("doi", "Optional DOI when distinct from source_url."),
     CsvColumn("access_date", "Date the source was accessed, ISO YYYY-MM-DD preferred."),
     CsvColumn("page_or_table_reference", "Whole-source anchor; row anchors live in Audit.page_ref."),
-    CsvColumn("source_role", "extraction, estimate, or both."),
+    CsvColumn("source_role", "extraction, estimate, both, or analyst."),
     CsvColumn("notes", "Registration notes."),
 ]
 
@@ -73,7 +73,9 @@ AUDIT_COLUMNS = [
     CsvColumn("selected_for_model", "TRUE on the consolidated row selected for its cell."),
     CsvColumn("cross_check_delta", "Cross-source disagreement annotation."),
     CsvColumn("extractor_notes", "Extractor caveats and provenance notes."),
-    CsvColumn("relevance_status", "clear, hold, reject, or pinned."),
+    CsvColumn("relevance_status", "clear, hold, or reject."),
+    CsvColumn("input_origin", "extracted, shared, estimated, or analyst."),
+    CsvColumn("input_priority", "fixed (validated authoritative user decision) or blank."),
     CsvColumn("analyst_question", "Self-contained question for held rows."),
     CsvColumn("normalization_status", "Status for Phase 4.2 normalization flags."),
     CsvColumn("normalization_decision", "Analyst/agent answer for normalization flags."),
@@ -111,8 +113,9 @@ MAIN_INPUT_COLUMNS = [
     CsvColumn("page_ref", "Selected row page/table/figure anchor."),
     CsvColumn("cross_check_delta", "Cross-source disagreement annotation."),
     CsvColumn("estimate_justification", "Structured JSON propagated from selected E rows."),
-    CsvColumn("pinned", "TRUE when T8 has locked this skeleton cell from pinned-inputs.csv."),
-    CsvColumn("notes", "Residual gap, pinned, or consolidation notes."),
+    CsvColumn("input_origin", "extracted, shared, estimated, or analyst."),
+    CsvColumn("input_priority", "fixed (validated authoritative user decision) or blank."),
+    CsvColumn("notes", "Residual gap, shared-input, or consolidation notes."),
 ]
 
 
@@ -199,19 +202,51 @@ HELD_ESTIMATES_COLUMNS = [
 ]
 
 
-PINNED_INPUTS_COLUMNS = [
-    CsvColumn("entity", "Schema entity id, or REF for reference values."),
-    CsvColumn("parameter", "Schema parameter id."),
-    CsvColumn("raw_value", "Pinned value exactly as supplied by the analyst."),
+SHARED_INPUTS_COLUMNS = [
+    CsvColumn("shared_input_id", "Stable id for a reusable comparison assumption."),
+    CsvColumn("raw_value", "Shared value exactly as supplied by the analyst/source."),
     CsvColumn("raw_units", "Units for raw_value."),
     CsvColumn("raw_basis_scale", "Scale basis, if any."),
     CsvColumn("raw_basis_scale_units", "Units for raw_basis_scale."),
     CsvColumn("raw_basis_year", "Source-year or cost basis year."),
-    CsvColumn("source_key", "Stable provenance key for this pinned value."),
-    CsvColumn("source_url", "Canonical URL for source_key."),
+    CsvColumn("source_key", "Stable provenance key for this shared value."),
     CsvColumn("page_ref", "Page, table, figure, equation, or analyst note anchor."),
-    CsvColumn("quality_tag", "Optional A/B/C/D tag; pinned is a relevance_status, not a tag."),
-    CsvColumn("notes", "Why this cell is pinned or any carry-forward context."),
+    CsvColumn("quality_tag", "Optional A/B/C/D tag for the shared evidence."),
+    CsvColumn("notes", "Why this value is reusable or any carry-forward context."),
+]
+
+
+SHARED_INPUT_MAPPINGS_COLUMNS = [
+    CsvColumn("shared_input_id", "Shared input id from shared-inputs.csv."),
+    CsvColumn("option_id", "Comparison option id from comparison-frame.json."),
+    CsvColumn("entity", "Target option schema entity id, or REF for reference values."),
+    CsvColumn("parameter", "Target option schema parameter id."),
+    CsvColumn("notes", "Analyst rationale for applying this shared input to the target cell."),
+]
+
+
+# Analyst-supplied inputs (orchestrator §6). ``user-sources.csv`` reuses the
+# source-registry shape (and may carry ``source_role=analyst``); ``user-inputs.csv``
+# holds only values the analyst mapped to a real schema cell. The two-axis
+# classification keeps the plan's vocabulary explicit: ``input_origin`` records
+# the lane (analyst assertion vs uploaded-doc extraction vs shared assumption),
+# while ``fixed`` records whether the user fixed it as authoritative.
+USER_INPUTS_COLUMNS = [
+    CsvColumn("input_id", "Stable id for one analyst-supplied mapped value."),
+    CsvColumn("entity", "Target schema entity id, or REF for reference values."),
+    CsvColumn("parameter", "Target schema parameter id."),
+    CsvColumn("raw_value", "Value exactly as the user or source supplied it."),
+    CsvColumn("raw_units", "Units for raw_value."),
+    CsvColumn("raw_basis_scale", "Scale basis, if any."),
+    CsvColumn("raw_basis_scale_units", "Units for raw_basis_scale."),
+    CsvColumn("raw_basis_year", "Source-year or cost basis year."),
+    CsvColumn("source_key", "Foreign key to user-sources.csv / Sources.csv."),
+    CsvColumn("page_ref", "Precise sheet/cell, page, table, or decision-log reference."),
+    CsvColumn("quality_tag", "Quality tag for the supplied value."),
+    CsvColumn("input_origin", "analyst, extracted, or shared (the input classification / lane)."),
+    CsvColumn("fixed", "TRUE for a fixed input (authoritative); blank for candidate evidence."),
+    CsvColumn("notes", "Pipeline notes."),
+    CsvColumn("user_rationale", "Why the user supplied or fixed this value."),
 ]
 
 
@@ -224,14 +259,20 @@ CSV_SCHEMAS = {
     "value_disagreements.csv": VALUE_DISAGREEMENTS_COLUMNS,
     "stage5_scope_fit_decisions.csv": SCOPE_FIT_DECISIONS_COLUMNS,
     "held_estimates.csv": HELD_ESTIMATES_COLUMNS,
-    "pinned-inputs.csv": PINNED_INPUTS_COLUMNS,
+    "shared-inputs.csv": SHARED_INPUTS_COLUMNS,
+    "shared-input-mappings.csv": SHARED_INPUT_MAPPINGS_COLUMNS,
+    "user-sources.csv": SOURCES_COLUMNS,
+    "user-inputs.csv": USER_INPUTS_COLUMNS,
 }
 
 
 SOURCES_FIELDNAMES = column_names(SOURCES_COLUMNS)
 AUDIT_FIELDNAMES = column_names(AUDIT_COLUMNS)
 MAIN_INPUT_FIELDNAMES = column_names(MAIN_INPUT_COLUMNS)
-PINNED_INPUTS_FIELDNAMES = column_names(PINNED_INPUTS_COLUMNS)
+SHARED_INPUTS_FIELDNAMES = column_names(SHARED_INPUTS_COLUMNS)
+SHARED_INPUT_MAPPINGS_FIELDNAMES = column_names(SHARED_INPUT_MAPPINGS_COLUMNS)
+USER_INPUTS_FIELDNAMES = column_names(USER_INPUTS_COLUMNS)
+USER_SOURCES_FIELDNAMES = SOURCES_FIELDNAMES
 
 
 def blank_row(fieldnames: Sequence[str]) -> dict[str, str]:

@@ -17,7 +17,9 @@
 | monthly_cost | Monthly cost | MONETARY | all | true | Amortized monthly cost for the cost center. |
 | power_draw | Power draw | INTENSITY | compute_hardware, power_cooling | true | kWh per 1M tokens. |
 | throughput | Throughput | RATE | compute_hardware | false | 1M tokens per hour. |
-| notes | Notes | TEXT | all | false | Free-text support notes. |
+
+Every model-input cell is numeric. Free-text support notes stay in `scope.md`
+and row notes, not as a `TEXT` cell (which the schema rejects).
 
 ## Reference values
 

@@ -29,7 +29,7 @@ from lib.csvio import (
 )
 from lib.extraction import is_nullish
 from lib.schema import GLOBAL_ENTITY_ID, Schema, load_schema
-from lib.search import SOURCE_KEY_RE
+from lib.search import SOURCE_KEY_RE, is_open_access_notes
 from lib.source_url import SourceUrlError, source_url_for
 
 
@@ -63,6 +63,7 @@ AUDIT_PROJECTABLE_KEYS = (
     "review_steps",
     "extractor_notes",
     "relevance_status",
+    "input_origin",
     "notes",
 )
 
@@ -135,6 +136,10 @@ def normalize_cited_source(raw: Mapping[str, object], *, access_date: str) -> di
     key = _source_key(raw)
     url = _source_url(raw)
     row = blank_row(SOURCES_FIELDNAMES)
+    access_notes = str(raw.get("access_notes") or "").strip()
+    notes = str(raw.get("notes") or "registered_from=estimation")
+    if access_notes:
+        notes = f"{notes}; access_notes={access_notes}"
     row.update(
         {
             "source_key": key,
@@ -149,7 +154,7 @@ def normalize_cited_source(raw: Mapping[str, object], *, access_date: str) -> di
                 raw.get("page_or_table_reference") or raw.get("page_ref") or ""
             ),
             "source_role": "estimate",
-            "notes": str(raw.get("notes") or "registered_from=estimation"),
+            "notes": notes,
         }
     )
     return row
@@ -259,6 +264,7 @@ def register_estimate_sources(
 def _validate_cited_sources(
     *,
     row: Mapping[str, object],
+    schema: Schema,
     method: str,
     where: str,
     errors: list[str],
@@ -278,6 +284,11 @@ def _validate_cited_sources(
             errors.append(f"{where}: cited source_key {key!r} must be kebab-case and <=64 chars")
         if not url or not HTTP_URL_RE.match(url):
             errors.append(f"{where}: cited source {key or '<blank>'!r} must include HTTP(S) source_url")
+        if schema.is_auto and not is_open_access_notes(source.get("notes")):
+            errors.append(
+                f"{where}: Auto mode cited source {key or '<blank>'!r} must include "
+                "access_notes explicitly confirming open/public full-text access"
+            )
 
     row_source_key = str(row.get("source_key") or "").strip()
     if method != "failed":
@@ -443,8 +454,22 @@ def validate_estimation_payload(doc: Mapping[str, object], schema: Schema) -> li
         if method not in ALLOWED_METHODS:
             errors.append(f"{where}: method {method!r} must be one of {sorted(ALLOWED_METHODS)}")
             continue
+        if schema.is_auto and method == "failed":
+            errors.append(
+                f"{where}: Auto mode requires a numeric estimate for every blank cell; "
+                "method 'failed' is not allowed"
+            )
+            continue
 
-        cited_sources.extend(_validate_cited_sources(row=row, method=method, where=where, errors=errors))
+        cited_sources.extend(
+            _validate_cited_sources(
+                row=row,
+                schema=schema,
+                method=method,
+                where=where,
+                errors=errors,
+            )
+        )
         _validate_method_shape(row=row, schema=schema, method=method, where=where, errors=errors)
         if schema.has_parameter(parameter):
             _validate_numeric_bounds(
@@ -481,6 +506,7 @@ def project_estimate_row(
         out[key] = "" if value is None else str(value)
     out["quality_tag"] = ESTIMATE_QUALITY_TAG
     out["relevance_status"] = str(row.get("relevance_status") or "clear")
+    out["input_origin"] = str(row.get("input_origin") or "estimated")
     out["held_estimate_status"] = ""
     out["held_estimate_answer"] = ""
     justification = _as_object(row.get("estimate_justification"))

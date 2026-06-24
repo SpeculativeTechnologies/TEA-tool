@@ -17,6 +17,12 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "execution_mode": {
+      "description": "Workflow interaction mode selected during setup. auto_with_human_gates pauses for analyst review; auto lets the AI resolve gates and requires a complete numeric final TEA. Omitted schemas default to auto_with_human_gates for backward compatibility.",
+      "type": "string",
+      "enum": ["auto_with_human_gates", "auto"],
+      "default": "auto_with_human_gates"
+    },
     "schema_version": {
       "description": "Version of this contract the config targets. Optional; defaults to \"1.0\".",
       "type": "string",

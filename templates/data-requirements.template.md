@@ -142,13 +142,14 @@ Optional. Leave blank to use defaults.
 - Gap-fill candidate cap:
 - Extraction batch size:
 
-## 10. Pinned Inputs
+## 10. Comparison Shared Inputs
 
-Will this run use a `pinned-inputs.csv`?
+If this TEA is part of a comparison project, list assumptions that might be
+shared through the comparison wrapper. Leave blank for a standalone run.
 
-- Yes / no:
-- Source run or rationale:
-- Which cells should be pinned:
+- Candidate shared assumptions:
+- Option-specific exceptions:
+- Reuse rationale:
 
 ## 11. Open Questions For Stage 0
 

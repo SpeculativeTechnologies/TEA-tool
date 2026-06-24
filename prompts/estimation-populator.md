@@ -20,6 +20,7 @@ Instantiate from `estimation_manifest.json` and the scout result:
 - `{{functional_unit}}`
 - `{{basis}}`
 - `{{comparable_rubric}}`
+- `{{execution_mode}}`
 
 ## Rules
 
@@ -38,6 +39,13 @@ Instantiate from `estimation_manifest.json` and the scout result:
   `cited_sources[]`.
 - If a value cannot be grounded, emit a failed row with blank value fields and
   a `failure_reason`; this is better than a weak number.
+- In Auto mode, all cited evidence must be publicly inspectable without a
+  subscription, login, purchase, or access request. Search specifically for
+  open full text, repository copies, government publications, official public
+  datasets, open journals/preprints, and public technical documentation.
+  Include `access_notes` on every cited source. If no open evidence directly
+  reports the target, use open evidence for the underlying parameters and make
+  a transparent estimate rather than citing inaccessible evidence.
 
 ## Output
 
@@ -72,6 +80,7 @@ Return one JSON object and no prose:
           "year": "2025",
           "publisher_or_journal": "Publisher",
           "source_url": "https://example.com/benchmark",
+          "access_notes": "open access full text verified",
           "page_or_table_reference": "Table 2",
           "notes": "Used for monthly benchmark."
         }
@@ -121,6 +130,7 @@ Comparable-mode rows use this justification shape:
         "source_key": "comparable-source-key",
         "title": "Source title",
         "source_url": "https://example.com/source",
+        "access_notes": "open access full text verified",
         "page_ref": "Table 4",
         "extracted_value": "Value used for this row."
       }
@@ -164,6 +174,8 @@ Failed rows use:
 - One row per blank parameter, no duplicates.
 - Every non-failed row has `cited_sources[]` with kebab-case `source_key` and
   HTTP(S) `source_url`.
+- In Auto mode, every cited source has `access_notes` explicitly confirming
+  open/public full-text access.
 - The row `source_key` appears in `cited_sources[]`.
 - Numeric values already normalized by you obey basic bounds when present:
   fractions in [0, 1], nonnegative monetary/intensity/rate values, and positive

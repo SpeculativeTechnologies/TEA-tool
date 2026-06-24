@@ -65,6 +65,7 @@ INFLATION_INDICES = frozenset({"CEPCI", "CPI", "PPI", "none"})
 ESTIMATION_POLICIES = frozenset({"comparables_first", "first_principles_only", "either"})
 PARAMETER_SCOPES = frozenset({"global", "entity"})
 INTENSITY_DENOMINATORS = frozenset({"functional_unit", "entity_output"})
+EXECUTION_MODES = frozenset({"auto_with_human_gates", "auto"})
 
 #: Carried-forward Vicky TEA defaults (plan.md §13 item 4); overridable via the
 #: config's ``defaults`` block.
@@ -80,7 +81,7 @@ _PARAM_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 #: JSON Schema. Used by the built-in structural validator.
 _TOPLEVEL_KEYS = frozenset(
     {
-        "schema_version", "tea_id", "display_name", "vocabulary", "functional_unit",
+        "execution_mode", "schema_version", "tea_id", "display_name", "vocabulary", "functional_unit",
         "basis", "quality_tags", "entities", "parameters", "estimation",
         "conventions_needed", "validation_targets", "defaults",
     }
@@ -257,6 +258,8 @@ def _structural_builtin(data) -> list[str]:
         err("display_name", "must be a non-empty string")
     if "schema_version" in data and not isinstance(data["schema_version"], str):
         err("schema_version", "must be a string")
+    if "execution_mode" in data and data["execution_mode"] not in EXECUTION_MODES:
+        err("execution_mode", f"must be one of {sorted(EXECUTION_MODES)}")
 
     # vocabulary
     vocab = data.get("vocabulary")
@@ -631,6 +634,22 @@ def _semantic(data: dict, report: ValidationReport) -> None:
             "estimate tag if you renamed it."
         )
 
+    # Numeric-only contract (both execution modes): every final TEA cell must end
+    # with one finite numeric model value, so JSON/TEXT parameters are rejected in
+    # Guided and Auto alike. Contextual text and structured context belong in the
+    # starting documents and notes, not in model-input cells (orchestrator §2/§11).
+    non_numeric = [
+        str(p.get("id") or "<unknown>")
+        for p in parameters
+        if isinstance(p, dict) and p.get("rule_type") in {"JSON", "TEXT"}
+    ]
+    if non_numeric:
+        report.errors.append(
+            "every TEA cell must end with one finite numeric model value; JSON/TEXT "
+            "parameters are not supported in either execution mode (keep contextual "
+            f"text in documents and notes instead): {non_numeric}"
+        )
+
     # conventions_needed vs. what the rule-types actually imply.
     declared = set(data.get("conventions_needed") or [])
     derived = _derive_convention_tokens(parameters, data.get("basis") or {})
@@ -722,6 +741,14 @@ class Schema:
     @property
     def schema_version(self) -> str:
         return self._data.get("schema_version", "1.0")
+
+    @property
+    def execution_mode(self) -> str:
+        return self._data.get("execution_mode", "auto_with_human_gates")
+
+    @property
+    def is_auto(self) -> bool:
+        return self.execution_mode == "auto"
 
     # --- vocabulary (display labels for human-facing output, D13) ---------
     def label_for(self, kind: str) -> str:

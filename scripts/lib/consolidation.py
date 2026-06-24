@@ -13,8 +13,8 @@ from .csvio import (
     write_rows,
 )
 from .extraction import is_nullish
-from .pinned import is_pinned_row
 from .schema import GLOBAL_ENTITY_ID, Schema
+from .shared_inputs import is_fixed_row, is_shared_row
 from .source_url import source_url_for
 
 
@@ -54,6 +54,10 @@ class ScopeFitDecisionRowsError(ConsolidationError):
 
 class HeldEstimateRowsError(ConsolidationError):
     """Raised when E-quality estimate rows lack review verdicts."""
+
+
+class FixedInputConflictError(ConsolidationError):
+    """Raised when one cell has two or more disagreeing fixed candidates."""
 
 
 def cell_key(row: Mapping[str, object]) -> tuple[str, str]:
@@ -159,6 +163,74 @@ def eligible_candidate_records(
     return records
 
 
+def has_shared_candidate(candidates: list[tuple[int, dict[str, str], float | None, int]]) -> bool:
+    """Whether a cell has an authoritative shared-input candidate."""
+
+    return any(is_shared_row(row) for _, row, _, _ in candidates)
+
+
+def has_fixed_candidate(candidates: list[tuple[int, dict[str, str], float | None, int]]) -> bool:
+    """Whether a cell has an authoritative fixed-input candidate."""
+
+    return any(is_fixed_row(row) for _, row, _, _ in candidates)
+
+
+def _value_signature(row: Mapping[str, object], schema: Schema) -> tuple[str, object]:
+    """A comparable signature for one candidate's model value.
+
+    Two fixed candidates ``conflict`` when their signatures differ; fixing the
+    same cell twice with the same value is harmless.
+    """
+
+    cmp = comparison_value(row, schema)
+    if cmp is None:
+        return ("raw", str(row.get("normalized_value") or row.get("capex_usd") or "").strip())
+    return ("num", round(cmp, 10))
+
+
+def find_fixed_conflicts(rows: list[dict[str, str]], schema: Schema) -> list[dict[str, object]]:
+    """Find cells whose eligible fixed candidates disagree (blocking in both modes)."""
+
+    groups: dict[tuple[str, str], list[tuple[int, dict[str, str]]]] = {}
+    for idx, row in enumerate(rows):
+        groups.setdefault(cell_key(row), []).append((idx, row))
+
+    conflicts: list[dict[str, object]] = []
+    for key, members in sorted(groups.items()):
+        candidates = eligible_candidate_records(members, schema)
+        fixed = [(idx, row, cmp) for idx, row, cmp, _rank in candidates if is_fixed_row(row)]
+        if len(fixed) < 2:
+            continue
+        signatures = {_value_signature(row, schema) for _, row, _ in fixed}
+        if len(signatures) > 1:
+            conflicts.append(
+                {
+                    "key": key,
+                    "values": "; ".join(
+                        f"{row.get('source_key') or 'unknown'}="
+                        f"{format_number(cmp) if cmp is not None else (row.get('normalized_value') or row.get('capex_usd') or '?')}"
+                        for _, row, cmp in fixed
+                    ),
+                }
+            )
+    return conflicts
+
+
+def format_fixed_conflict_error(conflicts: list[dict[str, object]]) -> str:
+    lines = []
+    for conflict in conflicts[:10]:
+        entity, parameter = conflict["key"]
+        lines.append(f"({entity},{parameter}): {conflict['values']}")
+    more = "" if len(conflicts) <= 10 else f"\n  ... +{len(conflicts) - 10} more"
+    return (
+        f"{len(conflicts)} cell(s) have two or more disagreeing fixed inputs. A fixed "
+        "input is an authoritative user decision and cannot be auto-resolved; raise a "
+        "blocking issue and have the user choose one value before consolidation.\n  "
+        + "\n  ".join(lines)
+        + more
+    )
+
+
 def fill_source_urls(
     rows: list[dict[str, str]],
     sources_path: str | Path | None,
@@ -222,6 +294,10 @@ def find_value_disagreements(
     held: list[dict[str, object]] = []
     for (entity, parameter), members in sorted(groups.items()):
         if len(members) < 2:
+            continue
+        # A shared or fixed candidate is authoritative for its cell; contrary
+        # evidence is recorded but does not block via the disagreement gate.
+        if any(is_shared_row(row) or is_fixed_row(row) for _, row, _ in members):
             continue
         values = [value for _, _, value in members]
         avg = sum(values) / len(values)
@@ -346,7 +422,7 @@ def find_scope_fit_decision_problems(
         candidates = eligible_candidate_records(members, schema)
         if not candidates:
             continue
-        if any(is_pinned_row(row) for _, row, _, _ in candidates):
+        if has_shared_candidate(candidates) or has_fixed_candidate(candidates):
             continue
         top_rank = min(rank for _, _, _, rank in candidates)
         top_keys = sorted(
@@ -409,8 +485,15 @@ def select_rows(
         if not candidates:
             continue
 
-        pinned = [candidate for candidate in candidates if is_pinned_row(candidate[1])]
-        active = pinned or candidates
+        # Selection precedence (orchestrator §6): a fixed candidate (any origin)
+        # outranks an approved shared input, which outranks ordinary candidates.
+        fixed = [candidate for candidate in candidates if is_fixed_row(candidate[1])]
+        if len(fixed) > 1 and len({_value_signature(row, schema) for _, row, _, _ in fixed}) > 1:
+            raise FixedInputConflictError(
+                format_fixed_conflict_error(find_fixed_conflicts([row for _, row in members], schema))
+            )
+        shared = [candidate for candidate in candidates if is_shared_row(candidate[1])]
+        active = fixed or shared or candidates
         top_rank = min(rank for _, _, _, rank in active)
         selected_by_scope = str(scope_fit_decisions.get(key) or "").strip()
 
@@ -489,10 +572,11 @@ def main_input_row(
         "page_ref",
         "cross_check_delta",
         "estimate_justification",
+        "input_origin",
+        "input_priority",
     )
     for key in copied:
         row[key] = str(selected.get(key) or "")
-    row["pinned"] = "TRUE" if is_pinned_row(selected) else ""
     note_parts = [
         str(selected.get("notes") or "").strip(),
         str(selected.get("transform_steps") or "").strip(),

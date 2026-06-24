@@ -106,8 +106,8 @@ class WorkedExampleTests(unittest.TestCase):
 
     def test_examples_build_skeletons(self):
         cases = [
-            (TI_EXAMPLE / "tea-schema.json", 74, 3),
-            (COMPUTE_EXAMPLE / "tea-schema.json", 17, 4),
+            (TI_EXAMPLE / "tea-schema.json", 61, 3),
+            (COMPUTE_EXAMPLE / "tea-schema.json", 12, 4),
         ]
         for schema_path, expected_rows, expected_ref_rows in cases:
             with self.subTest(schema=schema_path):

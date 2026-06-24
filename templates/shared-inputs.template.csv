@@ -1,0 +1,2 @@
+shared_input_id,raw_value,raw_units,raw_basis_scale,raw_basis_scale_units,raw_basis_year,source_key,page_ref,quality_tag,notes
+example-electricity-price,0.08,USD/kWh,,,2025,example-shared-source,Table 1,B,Example reusable comparison assumption

@@ -17,7 +17,7 @@ from .schema import GLOBAL_ENTITY_ID, Schema
 from .source_url import SourceUrlError, load_source_urls
 
 
-ALLOWED_RELEVANCE = {"clear", "hold", "reject", "pinned"}
+ALLOWED_RELEVANCE = {"clear", "hold", "reject"}
 EXTRACTOR_RELEVANCE = {"clear", "hold", "reject"}
 NULLISH_STRINGS = {"", "null", "none", "n/a"}
 
@@ -334,6 +334,7 @@ def json_row_to_audit_row(
         )
     out["source_url"] = resolved_url
     out["relevance_status"] = _status(row)
+    out["input_origin"] = "extracted"
 
     if out["raw_value"] and not out["quality_tag"] and source_quality_fallback:
         out["quality_tag"] = source_quality_fallback
@@ -386,7 +387,6 @@ def categorize_rows(rows: Iterable[Mapping[str, object]]) -> dict[str, int]:
         "clear": 0,
         "hold": 0,
         "reject": 0,
-        "pinned": 0,
     }
     for row in rows:
         counts["rows"] += 1

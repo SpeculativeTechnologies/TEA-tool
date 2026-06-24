@@ -1,0 +1,11 @@
+# Codex / OpenAI registration policy for the tea skill (the TEA orchestrator).
+# The skill is explicitly invoked only; it must never self-trigger on general
+# TEA questions. The platform-neutral instructions and references live in
+# .claude/skills/tea/ (SKILL.md + references/), cited from the
+# SKILL.md next to this file.
+name: tea
+description: >-
+  Explicitly-invoked orchestrator from a rough idea to finalized, citation-backed,
+  model-ready TEA inputs. Stops at populated inputs (no model build/run).
+policy:
+  allow_implicit_invocation: false

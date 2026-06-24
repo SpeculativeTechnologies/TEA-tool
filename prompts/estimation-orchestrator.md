@@ -7,7 +7,8 @@ their JSON, then call `scripts/append_estimation_rows.py`.
 
 Do not invent values in this prompt. Do not judge plausibility beyond mechanical
 schema checks. Every emitted row is reviewed later through
-`held_estimates.csv`.
+`held_estimates.csv`; in Auto mode, the Auto Gate Agent performs that review
+immediately.
 
 ## Inputs
 
@@ -20,7 +21,8 @@ python scripts/build_estimation_manifest.py --schema tea-schema.json --audit Aud
 
 The manifest carries:
 
-- `schema_tea_id`, `functional_unit`, `basis`, and `quality_tags`.
+- `schema_tea_id`, `execution_mode`, `functional_unit`, `basis`, and
+  `quality_tags`.
 - `comparable_rubric.dimensions` and `comparable_rubric.hard_rule` from the
   schema. These are the only rubric fields the scout may score.
 - `entities[]`, each with `entity`, `entity_name`, `scope_frame`,
@@ -152,10 +154,14 @@ Mechanical checks:
   `first_principles` null.
 - `first_principles` rows include equations, parameters with sources, and
   derivation steps.
-- `failed` rows leave value fields blank and include `failure_reason`.
+- In Auto with Human Gates mode, `failed` rows leave value fields blank and
+  include `failure_reason`.
+- In Auto mode, `failed` is forbidden. Make a best-effort, single numeric
+  estimate for every blank cell and clearly label assumptions and confidence.
 
-If a populator fails validation, re-prompt once. If it fails again, synthesize
-failed rows for that entity's blank parameters.
+If a populator fails validation, re-prompt once. In Auto with Human Gates mode,
+a second failure may produce failed rows. In Auto mode, retry with a simpler
+first-principles or conservative comparable estimate; do not emit a blank cell.
 
 ## Write
 

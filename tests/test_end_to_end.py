@@ -54,6 +54,21 @@ TI_STRUCTURAL_DELTAS = {
         ("4", "stoichiometry"),
         ("5", "stoichiometry"),
         ("6", "stoichiometry"),
+        # The numeric-only contract dropped the JSON `stoichiometry` and TEXT
+        # `output_notes` parameters; their oracle-covered cells are now extras.
+        ("1A", "stoichiometry"),
+        ("1B", "stoichiometry"),
+        ("1C", "stoichiometry"),
+        ("2A", "stoichiometry"),
+        ("2B", "stoichiometry"),
+        ("1A", "output_notes"),
+        ("1B", "output_notes"),
+        ("1C", "output_notes"),
+        ("2A", "output_notes"),
+        ("2B", "output_notes"),
+        ("4", "output_notes"),
+        ("5", "output_notes"),
+        ("6", "output_notes"),
     },
 }
 
@@ -214,15 +229,18 @@ class EndToEndFixtureTests(unittest.TestCase):
                 sources_path=root / "Sources.csv",
                 scope_fit_decisions_path=None,
             )
-            self.assertEqual(consolidated["main_skeleton_rows"], 17)
+            self.assertEqual(consolidated["main_skeleton_rows"], 12)
             self.assertEqual(consolidated["main_filled"], 2)
 
             final = root / "final"
+            # This drift test intentionally leaves cells unfilled; allow gaps so it
+            # exercises build/normalize/consolidate/finalize without the no-gap gate.
             finalized = finalize_inputs(
                 schema_path=schema_path,
                 main_input_path=root / "Main Input.csv",
                 sources_path=root / "Sources.csv",
                 output_dir=final,
+                require_complete=False,
             )
             self.assertEqual(finalized["reference_rows"], 4)
             self.assertEqual(finalized["filled"], 2)
@@ -234,7 +252,7 @@ class EndToEndFixtureTests(unittest.TestCase):
             self.assertEqual(monthly_cost["normalized_value"], "1100")
             self.assertEqual(monthly_cost["source_url"], "https://example.test/compute")
             manifest = (final / "run-manifest.md").read_text(encoding="utf-8")
-            self.assertIn("Coverage: 2/17 filled; 15 residual gap(s)", manifest)
+            self.assertIn("Coverage: 2/12 filled; 10 residual gap(s)", manifest)
             self.assertNotIn("CEPCI", monthly_cost["notes"])
 
     def test_ti_legacy_oracle_regression_projection(self):
@@ -265,7 +283,7 @@ class EndToEndFixtureTests(unittest.TestCase):
                 scope_fit_decisions_path=None,
             )
             self.assertEqual(result["selected"], len(common_rows))
-            self.assertEqual(result["main_skeleton_rows"], 74)
+            self.assertEqual(result["main_skeleton_rows"], 61)
             self.assertEqual(result["main_filled"], len(common_rows))
 
             main_by_cell = {
@@ -276,13 +294,15 @@ class EndToEndFixtureTests(unittest.TestCase):
                 with self.subTest(cell=cell):
                     self.assertEqual(project_ti_row(main_by_cell[cell]), project_ti_row(oracle_by_cell[cell]))
 
+            # The legacy oracle does not cover 6 schema cells; allow gaps here.
             finalized = finalize_inputs(
                 schema_path=schema_path,
                 main_input_path=root / "Main Input.csv",
                 sources_path=root / "Sources.csv",
                 output_dir=root / "final",
+                require_complete=False,
             )
-            self.assertEqual(finalized["main_rows"], 74)
+            self.assertEqual(finalized["main_rows"], 61)
             self.assertEqual(finalized["filled"], len(common_rows))
             self.assertEqual(finalized["reference_rows"], 3)
 

@@ -62,7 +62,7 @@ it from the two input docs.
 > read/write helpers; `scripts/lib/source_url.py` provides the `source_url_for`
 > denormalizer; `scripts/build_csvs.py` builds config-driven `Audit.csv`,
 > `Sources.csv`, and `Main Input.csv` skeletons from `Schema.skeleton_cells()`,
-> including `REF` reference-value rows and a T8 pinned-input hook. T2 coverage
+> including `REF` reference-value rows and `input_origin` columns. T2 coverage
 > lives in `tests/test_csv_contract.py`; full suite green at 48 tests
 > (`python -m unittest discover -s tests`, 2 optional jsonschema skips).
 
@@ -72,7 +72,7 @@ it from the two input docs.
 - `scripts/build_csvs.py` — reads the config → empty `Audit.csv`,
   `Sources.csv`, `Main Input.csv` (with the entity×parameter skeleton, incl.
   reference-value rows under the reserved global entity). Loads
-  `pinned-inputs.csv` if present (delegates marking to T8).
+  comparison shared inputs are materialized separately by T8.
 - CSV schemas per plan.md §8, incl. `Sources.csv` `source_url` (renamed from
   `url_or_doi`) + `source_role`; `source_url` on Audit/Main Input/queues.
 - `lib/source_url.py` — `source_url_for(source_key)` denormalizer.
@@ -203,7 +203,7 @@ remains); a Ti slice reproduces its Run 2 extracted rows.
 
 ## T6 — Consolidation  ☑  *(needs T1, T2)*
 
-> **Done.** `scripts/consolidate.py` ranks normalized Audit rows by pinned
+> **Done.** `scripts/consolidate.py` ranks normalized Audit rows by shared
 > status, schema quality tags, scope-fit decisions, raw basis year, and
 > `source_key`; writes consolidated Audit sidecars and schema-complete
 > `Main Input.csv` rows with `source_url`; and blocks unresolved value
@@ -280,45 +280,43 @@ dimensions in the config changes the scout's scoring fields).
 
 ---
 
-## T8 — Pinned inputs  ☑  *(needs T1, T2)*
+## T8 — Comparison shared inputs  ☑  *(needs T1, T2)*
 
-> **Done.** `templates/pinned-inputs.template.csv` and
-> `templates/pinned-inputs.schema.json` define the per-cell pin contract.
-> `scripts/lib/pinned.py` centralizes pinned-cell detection; `scripts/load_pinned_inputs.py`
-> validates schema applicability, injects `relevance_status=pinned` Audit rows,
-> and marks `Main Input.csv` skeleton cells. Search validation, extraction
-> manifests, and estimation manifests now skip pinned cells, while consolidation
-> locks pinned rows into selection. `scripts/finalize_inputs.py` emits final
-> Main Input/reference-value artifacts plus `run-manifest.md` without running a
-> model. T8 coverage lives in `tests/test_pinned_inputs.py` plus lane tests;
-> full suite green at 85 tests (`python -m unittest discover -s tests`).
+> **Done.** Comparison projects use `comparison-frame.json`,
+> `shared-sources.csv`, `shared-inputs.csv`, and
+> `shared-input-mappings.csv`. `scripts/validate_comparison_project.py`
+> validates wrapper contracts; `scripts/materialize_shared_inputs.py` writes
+> mapped rows with `input_origin=shared`; `scripts/finalize_comparison.py`
+> emits comparison-level summaries. Search validation, extraction manifests,
+> estimation manifests, consolidation, and finalization recognize shared
+> satisfied cells. T8 coverage lives in `tests/test_shared_inputs.py` plus lane
+> tests.
 
-**Goal:** accept-as-truth inputs that skip search/extract/estimate and lock
-consolidation (plan.md §7).
+**Goal:** reuse raw evidence across normal option runs while each option keeps
+its own route schema (plan.md §7).
 
 **Deliverables**
-- `templates/pinned-inputs.template.csv` + schema.
-- `scripts/load_pinned_inputs.py` — inject pinned cells as `relevance_status=
-  pinned` Audit rows; validate against the schema; mark cells pinned.
-- Skip wiring: search (T3), extraction manifest (T4), estimation manifest (T7)
-  must exclude pinned cells. Consolidation (T6) must always select the pinned
-  row. (Provide the shared "is this cell pinned?" predicate in `lib/`.)
-- `scripts/finalize_inputs.py` — Phase 7.1: emit final Main Input + reference
-  values + `run-manifest.md` (coverage, quality dist, pinned cells, residual
-  gaps, declared validation targets). **No model run.**
+- Shared CSV templates for sources, reusable inputs, and explicit mappings.
+- `scripts/validate_comparison_project.py` — validate frame, option schemas,
+  basis/functional-unit match, source references, and mappings.
+- `scripts/materialize_shared_inputs.py` — materialize `input_origin=shared`
+  Audit/Main Input rows and copy shared sources into option `Sources.csv`.
+- Skip wiring: search (T3), extraction manifest (T4), estimation manifest (T7),
+  consolidation (T6), and finalization recognize shared cells.
+- `scripts/finalize_comparison.py` — emit `shared-assumptions.csv`,
+  `option-summary.csv`, and `comparison-manifest.md`.
 
-**Acceptance:** a pinned cell is normalized then locked into Main Input
-unchanged in selection, and never appears in any search/extraction/estimation
-manifest; a comparison run (system 2 with pinned system-1 cells) holds those
-cells identical.
+**Acceptance:** a shared input is normalized inside each mapped option, selected
+as authoritative for that cell, skipped by search/extraction/estimation, and
+reported in option and comparison manifests.
 
 ---
 
 ## T9 — Docs & templates  ☑  *(needs T1 shape; finalize late)*
 
 > **Done.** `framework.md` now explains the domain-agnostic TEA framing,
-> boundaries, evidence model, rule types, reference values, estimation, pinned
-> inputs, and hand-off. `workflow.md` is expanded into a full Phase 0-7
+> boundaries, evidence model, rule types, reference values, estimation,
+> comparison shared inputs, and hand-off. `workflow.md` is expanded into a full Phase 0-7
 > operator guide with concrete run-folder commands and human-gate instructions.
 > `README.md` provides quickstart, outputs, glossary, and test entrypoint.
 > `templates/scope.template.md` and `templates/data-requirements.template.md`
@@ -327,7 +325,7 @@ cells identical.
 
 **Deliverables:** `framework.md` (generalized, domain-agnostic — derived from
 Vicky TEA `TEA Framework.md`), `workflow.md` (plan.md §6 expanded into an
-execution guide with the human-gate memo templates), `README.md` (quickstart +
+execution guide with human-gate instructions), `README.md` (quickstart +
 glossary), `templates/scope.template.md`, `templates/data-requirements.template.md`.
 
 **Acceptance:** a new analyst can author both input docs from the templates
@@ -367,7 +365,7 @@ consolidated result; compute example compiles + builds + smoke-normalizes.
 > `python -m unittest discover -s tests`. Coverage includes unit tests for the
 > schema loader/validator, CSV contracts, source URL denormalization, search,
 > extraction, normalization transforms and queues, consolidation/disagreement
-> gates, estimation, pinned inputs/finalization, worked examples, and T11
+> gates, estimation, shared inputs/finalization, worked examples, and T11
 > deterministic end-to-end fixtures. `tests/test_end_to_end.py` wires build →
 > normalize → consolidate → finalize for the compute smoke case and runs a Ti
 > legacy-oracle regression projection against `examples/ti-6al-4v/expected/Main Input.csv`,
@@ -375,7 +373,7 @@ consolidated result; compute example compiles + builds + smoke-normalizes.
 > 93 tests (`python -m unittest discover -s tests`).
 
 **Deliverables:** unit tests (schema loader/validator, each rule-type transform,
-`source_url` denormalizer, pinned skip/lock predicate, every sweep/apply),
+`source_url` denormalizer, shared-input skip/selection predicate, every sweep/apply),
 plus two end-to-end fixtures — **Ti regression** (oracle = `examples/ti-6al-4v/
 expected/Main Input.csv`) and **compute smoke** (no industrial path exercised).
 Wire a single `python -m pytest` (or unittest) entrypoint.

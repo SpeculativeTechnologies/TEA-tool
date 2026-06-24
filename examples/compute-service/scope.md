@@ -55,8 +55,8 @@ The functional unit is 1 million tokens served.
 ## Scenarios
 
 This example represents one managed service configuration. Alternative hardware
-or deployment models should be run as separate systems and compared with pinned
-shared inputs where appropriate.
+or deployment models should be run as separate options under a comparison
+wrapper with shared inputs where appropriate.
 
 ## Headline metrics
 
@@ -66,4 +66,3 @@ cost-center contribution breakdown. This workflow stops before model execution.
 ## Validation targets
 
 No validation targets are declared for this smoke example.
-

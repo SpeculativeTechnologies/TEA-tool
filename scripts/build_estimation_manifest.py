@@ -22,7 +22,7 @@ from typing import Mapping
 
 from lib.csvio import AUDIT_FIELDNAMES, MAIN_INPUT_FIELDNAMES, read_rows
 from lib.extraction import is_nullish
-from lib.pinned import is_pinned_row, truthy as _truthy
+from lib.shared_inputs import is_shared_row
 from lib.schema import GLOBAL_ENTITY_ID, Schema, load_schema
 
 
@@ -36,6 +36,10 @@ def _now_iso() -> str:
 
 def _tag(row: Mapping[str, object]) -> str:
     return str(row.get("quality_tag") or "").strip().upper()
+
+
+def _truthy(value: object) -> bool:
+    return str(value or "").strip().upper() in {"TRUE", "YES", "Y", "1"}
 
 
 def _cell(row: Mapping[str, object]) -> tuple[str, str]:
@@ -78,7 +82,7 @@ def _selected_real_row(
     for row in audit_rows:
         if _cell(row) != (entity, parameter):
             continue
-        if is_pinned_row(row):
+        if is_shared_row(row):
             return True
         if _tag(row) == ESTIMATE_QUALITY_TAG:
             continue
@@ -107,7 +111,7 @@ def _cell_is_blank(
     del schema
     main = main_by_cell.get((entity, parameter))
     if main:
-        if is_pinned_row(main):
+        if is_shared_row(main):
             return False
         if _has_model_value(main):
             if _tag(main) == ESTIMATE_QUALITY_TAG:
@@ -252,6 +256,7 @@ def build_manifest(
         "generated_at_iso": _now_iso(),
         "schema_tea_id": schema.tea_id,
         "display_name": schema.display_name,
+        "execution_mode": schema.execution_mode,
         "force_refresh": force_refresh,
         "functional_unit": schema.functional_unit,
         "basis": schema.basis,

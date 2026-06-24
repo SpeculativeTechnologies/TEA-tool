@@ -108,9 +108,9 @@ class ConsolidationTests(unittest.TestCase):
             self.assertEqual(cell["source_key"], "src-b")
             self.assertEqual(cell["source_url"], "https://example.test/b")
             self.assertEqual(cell["normalized_value"], "120")
-            self.assertEqual(len(main_rows), 17)
+            self.assertEqual(len(main_rows), 12)
 
-    def test_pinned_row_wins_over_better_quality(self):
+    def test_shared_row_wins_over_better_quality(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             audit = root / "Audit_normalized.csv"
@@ -124,7 +124,7 @@ class ConsolidationTests(unittest.TestCase):
                         source_key="src-b",
                         quality_tag="D",
                         normalized_value="95",
-                        relevance_status="pinned",
+                        input_origin="shared",
                     ),
                 ],
             )
@@ -142,7 +142,7 @@ class ConsolidationTests(unittest.TestCase):
                 if row["entity"] == "compute_hardware" and row["parameter"] == "monthly_cost"
             ][0]
             self.assertEqual(cell["source_key"], "src-b")
-            self.assertEqual(cell["pinned"], "TRUE")
+            self.assertEqual(cell["input_origin"], "shared")
             audit_rows = read_rows(root / "Audit_normalized_consolidated.csv")
             selected = [row for row in audit_rows if row["source_key"] == "src-b"][0]
             runner_up = [row for row in audit_rows if row["source_key"] == "src-a"][0]

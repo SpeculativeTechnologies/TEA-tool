@@ -1,13 +1,15 @@
 """Finalize a run after consolidation without running a model.
 
 Phase 7.1 emits the final Main Input table, a Reference Values table, and a
-run manifest summarizing coverage, quality distribution, source counts, pinned
-cells, residual gaps, and declared validation targets.
+run manifest summarizing coverage, quality distribution, source counts, shared
+inputs, residual gaps, and declared validation targets.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
+import math
 import shutil
 import sys
 from collections import Counter
@@ -15,8 +17,8 @@ from pathlib import Path
 from typing import Mapping
 
 from lib.consolidation import main_row_has_value
-from lib.csvio import MAIN_INPUT_FIELDNAMES, SOURCES_FIELDNAMES, read_rows, write_rows
-from lib.pinned import cell_key, is_pinned_row
+from lib.csvio import AUDIT_FIELDNAMES, MAIN_INPUT_FIELDNAMES, SOURCES_FIELDNAMES, read_rows, write_rows
+from lib.shared_inputs import cell_key, is_shared_row
 from lib.schema import GLOBAL_ENTITY_ID, Schema, load_schema
 
 
@@ -51,8 +53,8 @@ def _gap_rows(main_rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return [row for row in main_rows if not main_row_has_value(row)]
 
 
-def _pinned_rows(main_rows: list[dict[str, str]]) -> list[dict[str, str]]:
-    return [row for row in main_rows if is_pinned_row(row)]
+def _shared_rows(main_rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [row for row in main_rows if is_shared_row(row)]
 
 
 def _validate_main_input(main_rows: list[dict[str, str]], schema: Schema) -> None:
@@ -72,6 +74,138 @@ def _validate_main_input(main_rows: list[dict[str, str]], schema: Schema) -> Non
         raise ValueError("\n".join(errors))
 
 
+def _numeric_model_value(row: Mapping[str, object]) -> float | None:
+    populated = [
+        str(row.get(key) or "").strip()
+        for key in ("normalized_value", "capex_usd")
+        if str(row.get(key) or "").strip()
+    ]
+    if len(populated) != 1:
+        return None
+    try:
+        value = float(populated[0])
+    except ValueError:
+        return None
+    return value if math.isfinite(value) else None
+
+
+def _validate_complete(main_rows: list[dict[str, str]], schema: Schema) -> None:
+    """Both modes: every TEA cell must end with one finite numeric model value.
+
+    Auto resolves every gap automatically; Guided stays blocked until an
+    approved estimate or a supplied value fills each blank (orchestrator §10).
+    """
+
+    invalid = [
+        (row.get("entity", ""), row.get("parameter", ""))
+        for row in main_rows
+        if _numeric_model_value(row) is None
+    ]
+    if invalid:
+        cells = ", ".join(f"({entity},{parameter})" for entity, parameter in invalid)
+        mode = "Auto" if schema.is_auto else "Guided"
+        raise ValueError(
+            "finalization requires exactly one finite numeric model value for every "
+            f"TEA cell ({mode} mode); incomplete/non-numeric cell(s): {cells}. "
+            "Resolve each gap with an approved estimate or a supplied value (or pass "
+            "--allow-gaps for a draft manifest that is not a final hand-off)."
+        )
+
+
+def _auto_review_markdown(
+    *,
+    schema: Schema,
+    main_rows: list[dict[str, str]],
+    audit_rows: list[dict[str, str]],
+    run_log: str,
+) -> str:
+    lines = [
+        f"# Auto Review - {schema.display_name}",
+        "",
+        "## Outcome",
+        "",
+        f"- Numeric TEA cells completed: {len(main_rows)}/{len(main_rows)}",
+        "- Execution mode: `auto`",
+        "",
+        "## Gate Decisions",
+        "",
+    ]
+    decisions = []
+    decision_fields = (
+        ("relevance_status", "extractor_notes"),
+        ("normalization_status", "normalization_decision"),
+        ("disagreement_status", "disagreement_decision"),
+        ("held_estimate_status", "held_estimate_answer"),
+    )
+    for row in audit_rows:
+        for status_field, reason_field in decision_fields:
+            reason = str(row.get(reason_field) or "").strip()
+            if not reason or "AUTO:" not in reason.upper():
+                continue
+            decisions.append(
+                (
+                    row.get("entity", ""),
+                    row.get("parameter", ""),
+                    status_field,
+                    row.get(status_field, ""),
+                    reason,
+                )
+            )
+    if decisions:
+        lines.extend(
+            [
+                "| entity | parameter | gate | decision | reasoning |",
+                "|---|---|---|---|---|",
+            ]
+        )
+        for entity, parameter, gate, decision, reason in decisions:
+            lines.append(
+                f"| {_quote(entity)} | {_quote(parameter)} | {_quote(gate)} | "
+                f"{_quote(decision)} | {_quote(reason)} |"
+            )
+    else:
+        lines.append("No row-level `AUTO:` gate decisions were found in the supplied Audit file.")
+
+    lines.extend(["", "## Assumptions And Estimates", ""])
+    estimates = [row for row in main_rows if (row.get("quality_tag") or "").strip().upper() == "E"]
+    if estimates:
+        lines.extend(
+            [
+                "| entity | parameter | numeric value | units | confidence / assumptions |",
+                "|---|---|---:|---|---|",
+            ]
+        )
+        for row in estimates:
+            value = row.get("capex_usd") or row.get("normalized_value") or ""
+            units = row.get("normalized_units") or row.get("capex_form") or ""
+            justification = str(row.get("estimate_justification") or "").strip()
+            summary = justification
+            try:
+                parsed = json.loads(justification) if justification else {}
+                confidence = parsed.get("estimator_confidence", "unspecified")
+                caveats = parsed.get("caveats") or []
+                summary = f"confidence={confidence}; caveats={caveats}"
+            except (TypeError, json.JSONDecodeError):
+                pass
+            lines.append(
+                f"| {_quote(row.get('entity'))} | {_quote(row.get('parameter'))} | "
+                f"{_quote(value)} | {_quote(units)} | {_quote(summary)} |"
+            )
+    else:
+        lines.append("No E-quality estimates were selected.")
+
+    lines.extend(["", "## Assumptions, Flags, And Technical Errors", ""])
+    if run_log.strip():
+        lines.append(run_log.strip())
+    else:
+        lines.append(
+            "No separate `auto-run-log.md` was supplied. Review the gate decisions and "
+            "estimate caveats above; no technical errors were recorded by finalization."
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _manifest_markdown(
     *,
     schema: Schema,
@@ -82,7 +216,7 @@ def _manifest_markdown(
 ) -> str:
     filled = [row for row in main_rows if main_row_has_value(row)]
     gaps = _gap_rows(main_rows)
-    pinned = _pinned_rows(main_rows)
+    shared = _shared_rows(main_rows)
     source_counts = _source_counts(sources_rows)
     quality_counts = _quality_distribution(main_rows)
     validation_targets = _validation_targets(schema)
@@ -93,12 +227,13 @@ def _manifest_markdown(
         "## Summary",
         "",
         f"- TEA ID: `{schema.tea_id}`",
+        f"- Execution mode: `{schema.execution_mode}`",
         f"- Functional unit: `{schema.functional_unit_symbol or schema.functional_unit_name}`",
         f"- Basis: `{schema.currency}`, `{schema.base_year}`, `{schema.inflation_index}`",
         f"- Main Input: `{main_output_path}`",
         f"- Reference Values: `{reference_output_path}`",
         f"- Coverage: {len(filled)}/{len(main_rows)} filled; {len(gaps)} residual gap(s)",
-        f"- Pinned cells: {len(pinned)}",
+        f"- Shared input cells: {len(shared)}",
         "",
         "## Source Counts",
         "",
@@ -116,10 +251,10 @@ def _manifest_markdown(
     else:
         lines.append("- no filled cells")
 
-    lines.extend(["", "## Pinned Cells", ""])
-    if pinned:
+    lines.extend(["", "## Shared Inputs", ""])
+    if shared:
         lines.extend(["| entity | parameter | source_key | source_url |", "|---|---|---|---|"])
-        for row in pinned:
+        for row in shared:
             lines.append(
                 f"| {_quote(row.get('entity'))} | {_quote(row.get('parameter'))} | "
                 f"{_quote(row.get('source_key'))} | {_quote(row.get('source_url'))} |"
@@ -163,11 +298,19 @@ def finalize_inputs(
     schema_path: str | Path,
     main_input_path: str | Path = "Main Input.csv",
     sources_path: str | Path = "Sources.csv",
+    audit_path: str | Path | None = None,
+    auto_run_log_path: str | Path | None = None,
     output_dir: str | Path | None = None,
     manifest_path: str | Path | None = None,
+    require_complete: bool = True,
     dry_run: bool = False,
 ) -> dict[str, object]:
-    """Finalize Main Input and write reference values plus run manifest."""
+    """Finalize Main Input and write reference values plus run manifest.
+
+    ``require_complete`` (default True) enforces the both-mode no-gap numeric
+    contract. Pass False only for an explicitly-draft intermediate manifest that
+    is not the final hand-off.
+    """
 
     schema = load_schema(schema_path)
     main_input_path = Path(main_input_path)
@@ -178,10 +321,22 @@ def finalize_inputs(
     )
     main_output_path = output_dir / "Main Input.csv"
     reference_output_path = output_dir / "Reference Values.csv"
+    auto_review_path = output_dir / "auto-review.md"
 
     main_rows = read_rows(main_input_path, required_columns=MAIN_INPUT_FIELDNAMES)
     _validate_main_input(main_rows, schema)
+    if require_complete:
+        _validate_complete(main_rows, schema)
     sources_rows = read_rows(sources_path, required_columns=SOURCES_FIELDNAMES, missing_ok=True)
+    audit_rows = (
+        read_rows(audit_path, required_columns=AUDIT_FIELDNAMES, missing_ok=True)
+        if audit_path is not None
+        else []
+    )
+    if auto_run_log_path is None:
+        auto_run_log_path = main_input_path.parent / "auto-run-log.md"
+    auto_run_log_path = Path(auto_run_log_path)
+    run_log = auto_run_log_path.read_text(encoding="utf-8") if auto_run_log_path.exists() else ""
     reference_rows = [row for row in main_rows if row.get("entity") == GLOBAL_ENTITY_ID]
     manifest = _manifest_markdown(
         schema=schema,
@@ -190,6 +345,16 @@ def finalize_inputs(
         main_output_path=main_output_path,
         reference_output_path=reference_output_path,
     )
+    auto_review = (
+        _auto_review_markdown(
+            schema=schema,
+            main_rows=main_rows,
+            audit_rows=audit_rows,
+            run_log=run_log,
+        )
+        if schema.is_auto
+        else ""
+    )
 
     if not dry_run:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -197,19 +362,22 @@ def finalize_inputs(
             shutil.copyfile(main_input_path, main_output_path)
         write_rows(reference_output_path, MAIN_INPUT_FIELDNAMES, reference_rows)
         manifest_path.write_text(manifest, encoding="utf-8")
+        if schema.is_auto:
+            auto_review_path.write_text(auto_review, encoding="utf-8")
 
     gaps = _gap_rows(main_rows)
-    pinned = _pinned_rows(main_rows)
+    shared = _shared_rows(main_rows)
     return {
         "schema": schema,
         "main_input_path": main_input_path,
         "main_output_path": main_output_path,
         "reference_output_path": reference_output_path,
         "manifest_path": manifest_path,
+        "auto_review_path": auto_review_path if schema.is_auto else None,
         "main_rows": len(main_rows),
         "filled": len(main_rows) - len(gaps),
         "gaps": len(gaps),
-        "pinned": len(pinned),
+        "shared": len(shared),
         "reference_rows": len(reference_rows),
         "dry_run": dry_run,
     }
@@ -220,8 +388,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--schema", type=Path, required=True, help="Path to tea-schema.json")
     parser.add_argument("--main-input", type=Path, default=Path("Main Input.csv"))
     parser.add_argument("--sources", type=Path, default=Path("Sources.csv"))
+    parser.add_argument("--audit", type=Path, help="Final consolidated Audit CSV for Auto reasoning")
+    parser.add_argument("--auto-run-log", type=Path, help="Optional Auto assumptions/errors log")
     parser.add_argument("--output-dir", type=Path, help="Directory for final artifacts")
     parser.add_argument("--manifest", type=Path, help="Run manifest path")
+    parser.add_argument(
+        "--allow-gaps",
+        action="store_true",
+        help="Write a draft manifest with documented gaps instead of enforcing the "
+        "both-mode no-gap numeric contract; not a final hand-off.",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
 
@@ -230,8 +406,11 @@ def main(argv: list[str] | None = None) -> int:
             schema_path=args.schema,
             main_input_path=args.main_input,
             sources_path=args.sources,
+            audit_path=args.audit,
+            auto_run_log_path=args.auto_run_log,
             output_dir=args.output_dir,
             manifest_path=args.manifest,
+            require_complete=not args.allow_gaps,
             dry_run=args.dry_run,
         )
     except (OSError, ValueError) as exc:
@@ -241,12 +420,14 @@ def main(argv: list[str] | None = None) -> int:
     prefix = "[dry-run] " if args.dry_run else ""
     print(
         f"{prefix}finalized {result['filled']}/{result['main_rows']} filled cell(s), "
-        f"{result['pinned']} pinned, {result['gaps']} gap(s)"
+        f"{result['shared']} shared, {result['gaps']} gap(s)"
     )
     if not args.dry_run:
         print(f"Main Input -> {result['main_output_path']}")
         print(f"Reference Values -> {result['reference_output_path']}")
         print(f"Manifest -> {result['manifest_path']}")
+        if result["auto_review_path"]:
+            print(f"Auto review -> {result['auto_review_path']}")
     return 0
 
 

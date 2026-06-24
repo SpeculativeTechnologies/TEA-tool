@@ -14,7 +14,8 @@ from lib.csvio import (  # noqa: E402
     AUDIT_FIELDNAMES,
     CSV_SCHEMAS,
     MAIN_INPUT_FIELDNAMES,
-    PINNED_INPUTS_FIELDNAMES,
+    SHARED_INPUTS_FIELDNAMES,
+    SHARED_INPUT_MAPPINGS_FIELDNAMES,
     SOURCES_FIELDNAMES,
     append_rows,
     column_names,
@@ -40,6 +41,9 @@ class CsvSchemaTests(unittest.TestCase):
     def test_audit_and_main_use_neutral_vocabulary(self):
         self.assertEqual(AUDIT_FIELDNAMES[:2], ["entity", "parameter"])
         self.assertEqual(MAIN_INPUT_FIELDNAMES[:2], ["entity", "parameter"])
+        self.assertIn("input_origin", AUDIT_FIELDNAMES)
+        self.assertIn("input_origin", MAIN_INPUT_FIELDNAMES)
+        self.assertNotIn("pinned", MAIN_INPUT_FIELDNAMES)
         self.assertNotIn("unit", AUDIT_FIELDNAMES)
         self.assertNotIn("field", AUDIT_FIELDNAMES)
         self.assertNotIn("unit", MAIN_INPUT_FIELDNAMES)
@@ -48,6 +52,10 @@ class CsvSchemaTests(unittest.TestCase):
     def test_every_source_key_bearing_schema_has_source_url(self):
         for name, schema in CSV_SCHEMAS.items():
             fields = column_names(schema)
+            # shared-inputs.csv and user-inputs.csv reference a source_key but
+            # carry no source_url; the URL is denormalized at materialization.
+            if name in {"shared-inputs.csv", "user-inputs.csv"}:
+                continue
             if "source_key" in fields:
                 self.assertIn("source_url", fields, name)
 
@@ -55,6 +63,13 @@ class CsvSchemaTests(unittest.TestCase):
         self.assertIn("capex_basis_scale", AUDIT_FIELDNAMES)
         self.assertIn("capex_basis_scale_units", AUDIT_FIELDNAMES)
         self.assertNotIn("capex_basis_scale_tpy", AUDIT_FIELDNAMES)
+
+    def test_shared_input_contracts_exist(self):
+        self.assertEqual(SHARED_INPUTS_FIELDNAMES[0], "shared_input_id")
+        self.assertEqual(
+            SHARED_INPUT_MAPPINGS_FIELDNAMES,
+            ["shared_input_id", "option_id", "entity", "parameter", "notes"],
+        )
 
 
 class CsvIoTests(unittest.TestCase):
@@ -117,14 +132,14 @@ class SourceUrlTests(unittest.TestCase):
 class BuildCsvsTests(unittest.TestCase):
     def test_ti_builds_run2_entity_skeleton_plus_reference_rows(self):
         schema = load_schema(TI_SCHEMA)
-        self.assertEqual(len([c for c in schema.skeleton_cells() if c[0] != GLOBAL_ENTITY_ID]), 71)
+        self.assertEqual(len([c for c in schema.skeleton_cells() if c[0] != GLOBAL_ENTITY_ID]), 58)
         self.assertEqual(len([c for c in schema.skeleton_cells() if c[0] == GLOBAL_ENTITY_ID]), 3)
 
         with tempfile.TemporaryDirectory() as tmp:
             result = build(TI_SCHEMA, output_dir=tmp)
             out = Path(tmp)
 
-            self.assertEqual(result["skeleton_rows"], 74)
+            self.assertEqual(result["skeleton_rows"], 61)
             self.assertEqual(read_header(out / "Audit.csv"), AUDIT_FIELDNAMES)
             self.assertEqual(read_rows(out / "Audit.csv"), [])
             self.assertEqual(read_header(out / "Sources.csv"), SOURCES_FIELDNAMES)
@@ -132,7 +147,7 @@ class BuildCsvsTests(unittest.TestCase):
             self.assertEqual(read_header(out / "Main Input.csv"), MAIN_INPUT_FIELDNAMES)
 
             rows = read_rows(out / "Main Input.csv")
-            self.assertEqual(len(rows), 74)
+            self.assertEqual(len(rows), 61)
             cellset = {(row["entity"], row["parameter"]) for row in rows}
             self.assertEqual(cellset, set(schema.skeleton_cells()))
             self.assertIn((GLOBAL_ENTITY_ID, "electricity_price"), cellset)
@@ -147,7 +162,7 @@ class BuildCsvsTests(unittest.TestCase):
         rows = main_input_skeleton_rows(schema)
         params = {row["parameter"] for row in rows}
 
-        self.assertEqual(len(rows), 17)
+        self.assertEqual(len(rows), 12)
         self.assertEqual(len([r for r in rows if r["entity"] == GLOBAL_ENTITY_ID]), 4)
         self.assertNotIn("specific_capex", params)
         self.assertFalse(any("yield" in p.lower() for p in params))
@@ -160,7 +175,7 @@ class BuildCsvsTests(unittest.TestCase):
     def test_dry_run_writes_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = build(TI_SCHEMA, output_dir=tmp, dry_run=True)
-            self.assertEqual(result["skeleton_rows"], 74)
+            self.assertEqual(result["skeleton_rows"], 61)
             self.assertFalse((Path(tmp) / "Audit.csv").exists())
             self.assertTrue(any("would write" in action[2] for action in result["actions"]))
 
@@ -178,38 +193,6 @@ class BuildCsvsTests(unittest.TestCase):
             build(COMPUTE_SCHEMA, output_dir=out, force=True)
             with open(audit, newline="", encoding="utf-8") as fh:
                 self.assertEqual(next(csv.reader(fh)), AUDIT_FIELDNAMES)
-
-    def test_pinned_inputs_hook_loads_t8_rows(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp)
-            write_rows(
-                out / "pinned-inputs.csv",
-                PINNED_INPUTS_FIELDNAMES,
-                [
-                    {
-                        "entity": "compute_hardware",
-                        "parameter": "monthly_cost",
-                        "raw_value": "100",
-                        "raw_units": "USD/month",
-                        "raw_basis_year": "2025",
-                        "source_key": "pinned-source",
-                        "source_url": "https://example.test/pinned",
-                        "quality_tag": "D",
-                    }
-                ],
-            )
-            result = build(COMPUTE_SCHEMA, output_dir=out)
-            self.assertTrue(
-                any(action[0] == "pinned-inputs.csv" and "loaded" in action[2] for action in result["actions"])
-            )
-            audit_rows = read_rows(out / "Audit.csv")
-            self.assertEqual(audit_rows[0]["relevance_status"], "pinned")
-            main_rows = read_rows(out / "Main Input.csv")
-            pinned = [
-                row for row in main_rows
-                if row["entity"] == "compute_hardware" and row["parameter"] == "monthly_cost"
-            ][0]
-            self.assertEqual(pinned["pinned"], "TRUE")
 
 
 if __name__ == "__main__":

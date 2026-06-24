@@ -76,9 +76,6 @@
       "units": "1M tokens/h", "applies_to": ["compute_hardware"]
     },
     {
-      "id": "notes", "label": "Notes", "rule_type": "TEXT", "applies_to": "all"
-    },
-    {
       "id": "industrial_electricity_price", "label": "Industrial electricity price",
       "rule_type": "MONETARY", "context_free": true, "reference_value": true,
       "scope": "global", "canonical_unit": "USD/kWh", "market_basis": "US industrial bulk"
