@@ -1,0 +1,12 @@
+# Codex / OpenAI registration policy for the tea-scope skill (Step 1 of the TEA
+# orchestrator, run in series: tea-scope -> tea-model -> tea-data). Explicitly
+# invoked only; never self-trigger on general TEA questions. Platform-neutral
+# instructions live in .claude/skills/tea-scope/ and the shared references/
+# folder, cited from the SKILL.md next to this file.
+name: tea-scope
+description: >-
+  Step 1 of the explicitly-invoked TEA orchestrator (tea-scope -> tea-model ->
+  tea-data). Rough idea plus supplied materials to approved starting documents via
+  a relentless, question-driven interview.
+policy:
+  allow_implicit_invocation: false

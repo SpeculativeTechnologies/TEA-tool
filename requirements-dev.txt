@@ -9,3 +9,8 @@
 # (templates/tea-schema.schema.json) instead of the built-in mirror, and the
 # test suite exercises the JSON Schema directly. Install it for development/CI:
 jsonschema>=4
+
+# matplotlib is REQUIRED only for the model layer (/tea-model, /tea-data): the
+# bespoke runs/<project>/model.py renders figures with it. The core input
+# pipeline stays standard-library-only.
+matplotlib>=3

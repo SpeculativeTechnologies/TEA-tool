@@ -14,6 +14,11 @@ runs/<project>/
   decision-log.md           # readable rationale
   intake-summary.md         # the approved understanding check
   model-requirements.md     # desired outputs -> required inputs (project-level)
+  model.py                  # bespoke runnable model (approved + hashed; /tea-model)
+  model/dummy-inputs.csv    # quick dummy values for the dry run (/tea-model)
+  viz-spec.md               # chosen visualizations (approved + hashed; /tea-model)
+  plots/                    # rendered figures: dummy (/tea-model) then real (/tea-data)
+  model-results.json        # headline outputs from the latest model run
   user-inputs.csv           # analyst values mapped to schema cells
   user-sources.csv          # analyst/source registry (source_role may be analyst)
   provided-materials.json   # registered supplied materials
@@ -31,9 +36,14 @@ amendment (forward skips are rejected):
 
 ```
 intake → understanding_review → starting_documents_review → schema_setup →
-evidence_collection → extraction → normalization_and_selection →
-completeness_review → estimation → finalization → complete
+model_build → model_review → evidence_collection → extraction →
+normalization_and_selection → completeness_review → estimation → finalization → complete
 ```
+
+The three skills own contiguous slices: `/tea-scope` runs `intake` …
+`starting_documents_review`; `/tea-model` runs `schema_setup` … `model_review`;
+`/tea-data` runs `evidence_collection` … `complete`. Each skill refuses to start
+until the prior skill's gate approval is recorded and valid (see below).
 
 ## Issue ledger
 
@@ -65,12 +75,22 @@ and relevant issue ids:
 ```
 python scripts/orchestrator.py approve --run-dir RUN --type starting_documents \
     --artifact scope.md --artifact data-requirements.md --artifact model-requirements.md
+python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
+    --artifact model.py --artifact viz-spec.md
 ```
 
-`approve --type starting_documents` also sets `mode_locked`. If an approved file
-changes outside the orchestrator, `status`/`validate-resume` report the approval
-as invalid (changed/missing artifacts). Preserve completed work, but require
-renewed approval before applying it to altered scope.
+The two starting gates are `starting_documents` (end of `/tea-scope`) and
+`model_approved` (end of `/tea-model`). A skill gate-checks the prior approval via
+`status` → `approvals.valid` and refuses to proceed if it is absent. If an
+approved file changes outside the orchestrator, `status`/`validate-resume` report
+the approval as invalid (changed/missing artifacts) and it drops out of
+`approvals.valid`. A light inline `model.py` fix in `/tea-data` therefore
+invalidates `model_approved` until you re-`approve` it (refreshing the hash) —
+this is how the model never silently drifts from its approved state.
+
+Execution mode is **not** locked at any approval. It is set and locked once via
+`set-mode --lock` at the start of `/tea-data` (it only governs the
+data-acquisition gates); thereafter changing it requires a new run.
 
 Snapshot only meaningful semantic boundaries (not routine CSV churn):
 
@@ -79,7 +99,8 @@ python scripts/orchestrator.py snapshot --run-dir RUN --label starting-documents
     --artifact scope.md --artifact data-requirements.md --artifact model-requirements.md
 ```
 
-→ `history/<timestamp>-starting-documents/`. Other labels: `scope-amendment`.
+→ `history/<timestamp>-starting-documents/`. Other labels: `model-approved`,
+`scope-amendment`.
 
 ## Resume behavior
 
@@ -105,9 +126,10 @@ python scripts/orchestrator.py status --run-dir RUN
 ```
 
 Returns a concise machine summary: slug, type, stage, status, mode, mode_locked,
-unresolved issue count + breakdown, blockers, next action, approval validity, and
-per-option phase. Use it to build the Guided decision card's "N issues remaining"
-and to decide the next safe action.
+unresolved issue count + breakdown, blockers, next action, the valid + invalid
+approval types (skills gate on `approvals.valid`), and per-option phase. Use it to
+build the Guided decision card's "N issues remaining" and to decide the next safe
+action.
 
 ## CLI quick reference
 
@@ -117,8 +139,9 @@ and to decide the next safe action.
 | `status` | Concise machine-readable run status |
 | `validate-resume` | Validate a run before resuming |
 | `set-stage` | Advance or rewind the workflow stage |
+| `set-mode` | Set + optionally lock the execution mode (at `/tea-data` start) |
 | `issue add/resolve/list` | Maintain the issue ledger + counters |
-| `approve` | Record an approval with artifact hashes (locks mode for starting docs) |
+| `approve` | Record an approval with artifact hashes (`starting_documents`, `model_approved`) |
 | `snapshot` | Snapshot artifacts into `history/` |
 | `register-material` | Register a supplied material (copy or reference) |
 | `materialize-user-inputs` | Validate + materialize analyst inputs into Audit/Sources |

@@ -11,11 +11,12 @@ Each run folder should contain `scope.md`, `data-requirements.md`,
 `tea-schema.json`, working CSVs, source folders, search history, review queues,
 and final artifacts.
 
-New users do not have to drive these stages by hand. The `/tea`
-skill (`.claude/skills/tea/`) wraps this workflow end to end: it
-runs intake, writes the three starting documents, owns durable run state and an
-issue ledger through `scripts/orchestrator.py`, and routes the rest through the
-phases below. This guide remains the execution authority the skill follows.
+New users do not have to drive these stages by hand. The `/tea-data` skill
+(`.claude/skills/tea-data/`) drives this workflow for them — after `/tea-scope`
+has written the three starting documents and `/tea-model` has built the model. It
+owns durable run state and an issue ledger through `scripts/orchestrator.py` and
+routes the phases below, then runs the approved model on the finalized inputs.
+This guide remains the execution authority the skill follows.
 
 ## Phase 0 - Setup
 

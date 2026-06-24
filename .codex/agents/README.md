@@ -1,7 +1,7 @@
 # TEA Orchestrator — specialist agents (Codex roster)
 
-These reusable, **read-only** specialist roles are spawned by the `tea` skill
-(the TEA orchestrator). Their canonical definitions (with frontmatter and the full role contract)
+These reusable, **read-only** specialist roles are spawned by the TEA orchestrator
+skills (`/tea-scope`, `/tea-model`, `/tea-data`). Their canonical definitions (with frontmatter and the full role contract)
 live in `.claude/agents/tea-*.md` and are platform-neutral — a Codex runtime
 should load the matching file for the full brief. This roster is the index.
 
@@ -14,7 +14,7 @@ should load the matching file for the full brief. This roster is the index.
 | Quality / completeness reviewer | `.claude/agents/tea-quality-reviewer.md` | Before completeness review or finalization | Coverage, gap routes, quality flags, ready-to-finalize |
 
 Shared rules (full text in the canonical files and
-`.claude/skills/tea/references/interaction-and-gates.md`):
+`references/interaction-and-gates.md`):
 
 - Read-only by default; workers may write only isolated staging outputs. The main
   orchestrator serializes all canonical writes (phase scripts + orchestrator CLI).

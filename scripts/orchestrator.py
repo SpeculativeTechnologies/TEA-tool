@@ -14,6 +14,9 @@ skill can read the result without parsing prose (orchestrator §7).
     python scripts/orchestrator.py issue add --run-dir RUN --category decision --question "..."
     python scripts/orchestrator.py approve --run-dir RUN --type starting_documents \
         --artifact scope.md --artifact data-requirements.md --artifact model-requirements.md
+    python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
+        --artifact model.py --artifact viz-spec.md
+    python scripts/orchestrator.py set-mode --run-dir RUN --mode auto_with_human_gates --lock
     python scripts/orchestrator.py snapshot --run-dir RUN --label starting-documents \
         --artifact scope.md --artifact data-requirements.md
     python scripts/orchestrator.py register-material --run-dir RUN --path notes.xlsx --copy
@@ -204,6 +207,7 @@ def cmd_status(run_dir: str | Path) -> dict:
         "next_action": state.get("next_action", ""),
         "approvals": {
             "count": len(approvals),
+            "valid": sorted({a["type"] for a in approvals if a["ok"]}),
             "invalid": [{"type": a["type"], "changed": a["changed"], "missing": a["missing"]} for a in invalid],
         },
         "options": [
@@ -356,11 +360,40 @@ def cmd_approve(
         today=_today(today),
         issue_ids=issue_ids or [],
     )
-    # The execution mode becomes immutable once the starting documents are approved.
-    if approval_type == "starting_documents":
-        state["mode_locked"] = True
     st.write_state(run_dir, state, today=_today(today))
     return {"approval": record, "mode_locked": state.get("mode_locked", False)}
+
+
+def cmd_set_mode(
+    run_dir: str | Path,
+    *,
+    mode: str,
+    lock: bool = False,
+    today: str | None = None,
+) -> dict:
+    """Set (and optionally lock) the execution mode.
+
+    The execution mode is chosen at the start of the data-acquisition skill
+    (`/tea-data`) and locked once acquisition begins; it governs only the
+    downstream gate behavior. A locked mode is immutable: changing it requires a
+    new run. Setting the same mode again (idempotent) or merely locking the
+    current mode is always allowed.
+    """
+
+    run_dir = Path(run_dir)
+    state = st.read_state(run_dir)
+    if mode not in st.EXECUTION_MODES:
+        raise OrchestratorError(f"mode must be one of {sorted(st.EXECUTION_MODES)}")
+    current = state.get("execution_mode")
+    if state.get("mode_locked") and mode != current:
+        raise OrchestratorError(
+            f"execution mode is locked at {current!r}; changing it requires a new run"
+        )
+    state["execution_mode"] = mode
+    if lock:
+        state["mode_locked"] = True
+    st.write_state(run_dir, state, today=_today(today))
+    return {"execution_mode": state["execution_mode"], "mode_locked": state.get("mode_locked", False)}
 
 
 def cmd_snapshot(
@@ -527,6 +560,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_stage.add_argument("--stage", required=True, choices=list(st.STAGES))
     p_stage.add_argument("--date")
 
+    p_mode = sub.add_parser("set-mode", help="Set (and optionally lock) the execution mode")
+    p_mode.add_argument("--run-dir", required=True)
+    p_mode.add_argument("--mode", required=True, choices=sorted(st.EXECUTION_MODES))
+    p_mode.add_argument("--lock", action="store_true")
+    p_mode.add_argument("--date")
+
     p_issue = sub.add_parser("issue", help="Add, resolve, or list issues")
     issue_sub = p_issue.add_subparsers(dest="issue_command", required=True)
     p_issue_add = issue_sub.add_parser("add")
@@ -605,6 +644,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if summary["resumable"] else 1
         if args.command == "set-stage":
             _emit(cmd_set_stage(args.run_dir, args.stage, today=args.date))
+            return 0
+        if args.command == "set-mode":
+            _emit(cmd_set_mode(args.run_dir, mode=args.mode, lock=args.lock, today=args.date))
             return 0
         if args.command == "issue":
             if args.issue_command == "add":

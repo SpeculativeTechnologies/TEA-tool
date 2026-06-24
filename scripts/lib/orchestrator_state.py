@@ -52,6 +52,8 @@ STAGES = (
     "understanding_review",
     "starting_documents_review",
     "schema_setup",
+    "model_build",
+    "model_review",
     "evidence_collection",
     "extraction",
     "normalization_and_selection",

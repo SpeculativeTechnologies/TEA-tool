@@ -2,7 +2,8 @@
 
 Config-driven data pipeline for techno-economic analysis input preparation.
 It turns two analyst-authored documents into populated, normalized,
-citation-backed model inputs. It does not build or run the analyst's model.
+citation-backed model inputs, and — through the `/tea-*` orchestrator skills —
+builds a runnable model from them and runs it.
 
 The workflow is domain-agnostic. One run can describe an industrial process,
 a managed compute service, a logistics workflow, or another single system, as
@@ -10,18 +11,24 @@ long as the analyst can specify the scope and data requirements clearly.
 
 ## New Users: The Orchestrator
 
-If you have a rough idea rather than finished input documents, invoke the
-explicitly-invoked **`/tea`** skill
-(`.claude/skills/tea/`, with a Codex shim under `.agents/` and
-`.codex/`). It runs intake in plain language, writes the three starting
-documents for you (`scope.md`, `data-requirements.md`, `model-requirements.md`),
-keeps durable run state and an issue ledger via `scripts/orchestrator.py`, and
-drives the workflow below to finalized inputs. You approve the starting documents
-and the consequential judgments; it handles schemas, files, and bookkeeping.
+If you have a rough idea rather than finished input documents, use the three
+explicitly-invoked orchestrator skills, run **in series** (`.claude/skills/tea-scope`,
+`tea-model`, `tea-data`, with a Codex shim under `.agents/` and `.codex/`):
 
-It offers two modes — **Guided** (pauses for consequential decisions) and
-**Hands-off** (resolves downstream gates and documents assumptions). Both stop at
-populated inputs; neither builds or runs the model.
+1. **`/tea-scope`** runs intake in plain language — a relentless, question-driven
+   interview — and writes the three starting documents (`scope.md`,
+   `data-requirements.md`, `model-requirements.md`).
+2. **`/tea-model`** builds a runnable `model.py` from those docs, dry-runs it on
+   quick dummy values, and agrees the visualizations with you.
+3. **`/tea-data`** gathers the real, citation-backed evidence, then injects it into
+   the approved model and runs it to produce the final charts and results.
+
+They share durable run state and an issue ledger via `scripts/orchestrator.py`;
+each is hard-gated on the prior skill's approval. You approve the starting
+documents, the model, and the consequential judgments; the skills handle schemas,
+files, and bookkeeping. `/tea-data` offers two modes — **Guided** (pauses for
+consequential decisions) and **Hands-off** (resolves downstream gates and documents
+assumptions).
 
 ## What You Provide
 
@@ -63,8 +70,9 @@ Use these templates:
 - `auto-review.md` in Auto mode: AI decisions, assumptions, estimates, flags,
   and technical errors.
 
-The final stop is populated inputs. Model execution and back-casting stay
-outside this tool.
+The pipeline's hand-off is populated inputs (`Main Input.csv`); the `/tea-model`
+and `/tea-data` skills then build, populate, and run a model on top of them,
+writing figures to the run's `plots/` folder.
 
 ## Quickstart
 

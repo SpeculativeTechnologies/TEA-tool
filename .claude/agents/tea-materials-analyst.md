@@ -2,8 +2,8 @@
 name: tea-materials-analyst
 description: >-
   Read-only analyst for one supplied material in a TEA orchestrator run (a
-  document, PDF, spreadsheet, model, or URL). Spawned by the TEA orchestrator
-  (`/tea`), one worker per file/model, to produce a concise structured summary
+  document, PDF, spreadsheet, model, or URL). Spawned by the scoping skill
+  (`/tea-scope`), one worker per file/model, to produce a concise structured summary
   before intake questions. Not for canonical writes.
 tools: Read, Grep, Glob, WebFetch
 ---

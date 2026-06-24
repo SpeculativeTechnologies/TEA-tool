@@ -1,0 +1,12 @@
+# Codex / OpenAI registration policy for the tea-model skill (Step 2 of the TEA
+# orchestrator, run in series: tea-scope -> tea-model -> tea-data). Explicitly
+# invoked only; never self-trigger on general TEA questions. Platform-neutral
+# instructions live in .claude/skills/tea-model/ and the shared references/
+# folder, cited from the SKILL.md next to this file.
+name: tea-model
+description: >-
+  Step 2 of the explicitly-invoked TEA orchestrator (tea-scope -> tea-model ->
+  tea-data). Builds a runnable model.py from the approved starting documents,
+  dry-runs it on dummy values, agrees visualizations, and locks it behind a gate.
+policy:
+  allow_implicit_invocation: false

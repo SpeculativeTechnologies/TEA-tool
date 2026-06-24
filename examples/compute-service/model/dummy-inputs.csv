@@ -1,0 +1,13 @@
+entity,parameter,value
+compute_hardware,monthly_cost,180000
+power_cooling,monthly_cost,40000
+networking,monthly_cost,15000
+staffing,monthly_cost,90000
+software_licensing,monthly_cost,20000
+compute_hardware,throughput,40
+compute_hardware,power_draw,0.08
+power_cooling,power_draw,0.03
+REF,industrial_electricity_price,0.08
+REF,gpu_street_price,30000
+REF,transit_bandwidth_price,0.15
+REF,ml_engineer_loaded_rate,120

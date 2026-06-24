@@ -284,9 +284,11 @@ def _manifest_markdown(
     lines.extend(
         [
             "",
-            "## Stop Point",
+            "## Inputs Finalized",
             "",
-            "This tool stops at populated inputs. The analyst runs their own model outside this workflow.",
+            "Inputs are finalized: one finite numeric value per schema cell. A model can "
+            "now be run on `Main Input.csv` — the `/tea-model` and `/tea-data` skills build "
+            "and run one, or run your own.",
             "",
         ]
     )

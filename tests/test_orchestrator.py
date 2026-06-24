@@ -93,6 +93,25 @@ class StageTransitionTests(unittest.TestCase):
             orch.cmd_set_stage(run_dir, "intake", today=DATE)
             self.assertEqual(st.read_state(run_dir)["stage"], "intake")
 
+    def test_model_stages_advance_in_order(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._run(tmp)
+            for stage in (
+                "understanding_review",
+                "starting_documents_review",
+                "schema_setup",
+                "model_build",
+                "model_review",
+                "evidence_collection",
+            ):
+                orch.cmd_set_stage(run_dir, stage, today=DATE)
+                self.assertEqual(st.read_state(run_dir)["stage"], stage)
+            # Skipping a model stage is still rejected: schema_setup -> model_review
+            # is a forward jump of two.
+            orch.cmd_set_stage(run_dir, "schema_setup", today=DATE)  # rewind is allowed
+            with self.assertRaises(st.StateError):
+                orch.cmd_set_stage(run_dir, "model_review", today=DATE)
+
 
 class IssueTests(unittest.TestCase):
     def _run(self, tmp):
@@ -136,7 +155,7 @@ class ApprovalTests(unittest.TestCase):
         orch.cmd_init(name="Run", runs_dir=runs, today=DATE)
         return runs / "run"
 
-    def test_approval_hashes_lock_mode_and_invalidate_on_edit(self):
+    def test_starting_documents_approval_does_not_lock_mode_and_invalidates_on_edit(self):
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = self._run(tmp)
             (run_dir / "scope.md").write_text("scope v1", encoding="utf-8")
@@ -147,16 +166,65 @@ class ApprovalTests(unittest.TestCase):
                 artifacts=["scope.md", "data-requirements.md"],
                 today=DATE,
             )
-            self.assertTrue(result["mode_locked"])
+            # Mode is no longer locked at starting-documents approval; that moves to
+            # set-mode at the start of /tea-data.
+            self.assertFalse(result["mode_locked"])
 
             status = orch.cmd_status(run_dir)
             self.assertEqual(status["approvals"]["invalid"], [])
+            self.assertEqual(status["approvals"]["valid"], ["starting_documents"])
 
             # Edit an approved artifact outside the orchestrator.
             (run_dir / "scope.md").write_text("scope v2 edited", encoding="utf-8")
             resume = orch.cmd_validate_resume(run_dir)
             self.assertEqual(len(resume["invalid_approvals"]), 1)
             self.assertIn("scope.md", resume["invalid_approvals"][0]["changed"])
+            self.assertEqual(orch.cmd_status(run_dir)["approvals"]["valid"], [])
+
+    def test_model_approved_records_and_invalidates_on_edit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._run(tmp)
+            (run_dir / "model.py").write_text("print('m')\n", encoding="utf-8")
+            (run_dir / "viz-spec.md").write_text("# viz\n", encoding="utf-8")
+            result = orch.cmd_approve(
+                run_dir,
+                approval_type="model_approved",
+                artifacts=["model.py", "viz-spec.md"],
+                today=DATE,
+            )
+            self.assertEqual(result["approval"]["type"], "model_approved")
+            # A model approval never touches the execution-mode lock.
+            self.assertFalse(result["mode_locked"])
+            self.assertIn("model_approved", orch.cmd_status(run_dir)["approvals"]["valid"])
+
+            # A light inline edit to model.py invalidates the approval until re-approved.
+            (run_dir / "model.py").write_text("print('m2')\n", encoding="utf-8")
+            self.assertNotIn("model_approved", orch.cmd_status(run_dir)["approvals"]["valid"])
+            resume = orch.cmd_validate_resume(run_dir)
+            self.assertTrue(any(a["type"] == "model_approved" for a in resume["invalid_approvals"]))
+
+    def test_set_mode_locks_and_rejects_change(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._run(tmp)
+            self.assertFalse(st.read_state(run_dir)["mode_locked"])  # unlocked at init
+
+            locked = orch.cmd_set_mode(run_dir, mode="auto", lock=True, today=DATE)
+            self.assertEqual(locked["execution_mode"], "auto")
+            self.assertTrue(locked["mode_locked"])
+            self.assertTrue(orch.cmd_status(run_dir)["mode_locked"])
+
+            # Re-setting the same locked mode is idempotent.
+            self.assertEqual(orch.cmd_set_mode(run_dir, mode="auto", lock=True, today=DATE)["execution_mode"], "auto")
+
+            # Changing a locked mode is refused.
+            with self.assertRaises(orch.OrchestratorError):
+                orch.cmd_set_mode(run_dir, mode="auto_with_human_gates", today=DATE)
+
+    def test_set_mode_rejects_unknown_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._run(tmp)
+            with self.assertRaises(orch.OrchestratorError):
+                orch.cmd_set_mode(run_dir, mode="turbo", today=DATE)
 
     def test_approve_missing_artifact_raises(self):
         with tempfile.TemporaryDirectory() as tmp:

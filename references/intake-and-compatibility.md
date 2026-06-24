@@ -1,8 +1,13 @@
 # Intake and compatibility
 
-Detailed contract for the mandatory intake and approval flow. The skill body
-gives the sequence; this is the substance. Keep schemas, files, and CSVs
-invisible to the user — derive what you can, ask only consequential gaps.
+Detailed contract for the mandatory intake and approval flow of `/tea-scope`
+(Skill 1 of three). The skill body gives the sequence; this is the substance.
+Keep schemas, files, and CSVs invisible to the user — derive what you can, and
+resolve ambiguity by asking from your own knowledge rather than researching.
+
+Execution mode (Guided vs. Hands-off) is **not** chosen here; it is selected and
+locked at the start of `/tea-data` (Skill 3), because it only governs the
+data-acquisition gates. `/tea-scope` is interactive regardless.
 
 ## Step 1 — Initialize early
 
@@ -10,8 +15,10 @@ After you know the project name and whether it is a single run or a comparison:
 
 ```
 python scripts/orchestrator.py init --name "<name>" [--type single|comparison] \
-    [--option <id>:"<display>" ...] [--mode auto_with_human_gates|auto]
+    [--option <id>:"<display>" ...]
 ```
+
+Do **not** pass `--mode` here — mode is chosen later, at the start of `/tea-data`.
 
 `init` creates `runs/<slug>/` with `orchestrator-state.json`, `issues.json`,
 `decision-log.md`, `user-sources.csv`, `user-inputs.csv`,
@@ -43,18 +50,26 @@ collect concise structured summaries. Inspect formulas, assumptions, units, and
 outputs of any supplied model, but do not modify or execute it unless the user
 separately asks.
 
-## Step 2 — Choose execution mode
+## Step 2 — Question-driven scoping (ask, don't research)
 
-Ask early, in novice language:
+Reaching a correct scope is the heart of this stage. When the user is vague,
+**resolve ambiguity by asking, not by researching.** Draw on your own domain
+knowledge to propose framing and interrogate the plan, in the spirit of a
+relentless design interview.
 
-- **Guided** (`auto_with_human_gates`, default): pauses for consequential
-  judgments.
-- **Hands-off** (`auto`): resolves downstream gates automatically and documents
-  assumptions.
-
-Revisable during intake; immutable once the starting documents are approved
-(changing it later requires a new run). `approve --type starting_documents` sets
-`mode_locked`.
+- Ask **one question at a time** — roughly **10–15** over the stage — walking each
+  branch of the decision tree and resolving dependencies in order. Do not dump a
+  long questionnaire at once.
+- For **every** question, give your **recommended answer** and a one-line why, so a
+  non-expert can simply confirm or correct.
+- Prefer your own knowledge and the **user-supplied** materials over the web. If a
+  question can be answered by inspecting a supplied file, do that instead of
+  asking. Run a light, targeted web search **only** when you are genuinely stuck on
+  a specific factual point a question cannot resolve — never open-ended research.
+- Cover the completeness checklist below through these questions: the decision,
+  single-vs-comparison, system boundary, functional unit, basis
+  (geography/time/currency), desired outputs, supplied/fixed values, proposed
+  entities/parameters, and major assumptions.
 
 ## Step 3 — Inspect and classify supplied values
 
@@ -94,11 +109,12 @@ overrides are allowed and recorded when technically valid; mechanically invalid
 configurations are not. When input is incompatible, explain the mismatch,
 propose the smallest viable correction, and allow a documented override if valid.
 
-Limited research during intake may inform proposed framing — distinguish
-user-confirmed system definitions from public facts and unresolved placeholders.
-Any numeric evidence found during intake must later enter the normal evidence
-pipeline. For three or more comparison options, warn once that research volume,
-review burden, and comparability risk increase, then require confirmation.
+Default to your own knowledge and to questions (Step 2); reserve web search for a
+specific factual point a question cannot resolve. Distinguish user-confirmed
+system definitions from public facts and unresolved placeholders. Any numeric
+evidence found this way must later enter the normal evidence pipeline. For three
+or more comparison options, warn once that research volume, review burden, and
+comparability risk increase, then require confirmation.
 
 Use the standard A–E quality definitions unless the user requests a custom
 scheme. Infer estimation policies from calculation structure and parameter
@@ -120,9 +136,11 @@ the user). `model-requirements.md` (template:
 `templates/model-requirements.template.md`) records desired outputs and units,
 the functional-unit relationship, inputs required by each output, supplied vs.
 still-needed inputs, intended formulas when known, scenario/comparison
-relationships, modeling assumptions and unresolved dependencies, and the explicit
-V1 stop. For comparisons use one project-level `model-requirements.md`; option
-folders hold option-specific `scope.md` and `data-requirements.md`.
+relationships, and modeling assumptions and unresolved dependencies. It is the
+**specification `/tea-model` implements** as a runnable `model.py`, so make the
+outputs and their formulas explicit and numeric. For comparisons use one
+project-level `model-requirements.md`; option folders hold option-specific
+`scope.md` and `data-requirements.md`.
 
 Compile the schema per option with `prompts/stage0-schema-compile.md`. The schema
 is **numeric-only**: every cell ends with one finite numeric value; JSON/TEXT
@@ -135,9 +153,9 @@ Run the schema/compatibility reviewer subagent; correct mechanical problems
 before the gate. Show a concise document summary, assumptions and exclusions,
 required input categories, extracted user-value counts and uncertain
 interpretations, fixed inputs, and links to the full documents and
-`user-inputs.csv`. Both modes require explicit approval of all three documents.
-On approval: `approve --type starting_documents` (hashes + locks mode) and
-`snapshot --label starting-documents`.
+`user-inputs.csv`. Require explicit approval of all three documents. On approval:
+`approve --type starting_documents` (hashes the three documents) and
+`snapshot --label starting-documents`, then direct the user to run `/tea-model`.
 
 ## Default completeness checklist
 

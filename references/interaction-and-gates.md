@@ -1,7 +1,10 @@
 # Interaction, gates, and subagents
 
-How to run `workflow.md` for a non-expert: when to interrupt, what a gate looks
-like, how sources and comparisons are handled, and the subagent contract.
+The execution contract for `/tea-data` (Skill 3): how to run `workflow.md` for a
+non-expert — when to interrupt, what a gate looks like, how sources and
+comparisons are handled, the subagent contract, and how the populated model is
+run at the end. `/tea-data` only starts once `model_approved` is recorded and
+valid (`status` → `approvals.valid`); otherwise send the user to `/tea-model`.
 
 ## General
 
@@ -12,10 +15,32 @@ user only at real gates or consequential decisions.
 
 Both modes pause for:
 
-- Starting-document approval.
 - Material scope amendments.
 - Changes to decision, functional unit, boundary, options, or required outputs.
 - A hard technical contract that cannot be satisfied.
+
+(Starting-document and model approval already happened in `/tea-scope` and
+`/tea-model`; touching either invalidates its approval and is handled as an
+amendment.)
+
+## Mode selection (start of /tea-data)
+
+`/tea-data` begins by asking the user, in novice language, how to run the data
+hunt:
+
+- **Guided** (`auto_with_human_gates`, default): pauses at consequential gates.
+- **Hands-off** (`auto`): resolves downstream gates automatically and documents
+  assumptions.
+
+Record and lock the choice before any acquisition work:
+
+```
+python scripts/orchestrator.py set-mode --run-dir RUN \
+    --mode auto_with_human_gates|auto --lock
+```
+
+The mode is immutable once locked (changing it requires a new run) and governs
+only the gate behavior in the stages below.
 
 ## Guided mode — decision cards
 
@@ -110,6 +135,35 @@ keep the run blocked and resumable. Hands-off: estimate every remaining numeric
 cell under the Auto contract. `finalize_inputs.py` validates exactly one finite
 numeric model value per cell in both modes (use `--allow-gaps` only for an
 explicitly-draft intermediate manifest, never the final hand-off).
+
+## Run the model (end of /tea-data)
+
+After finalization produces the real, fully-populated `Main Input.csv`, run the
+already-approved model on it and present results — this run **is** the
+deliverable. See `references/model-building.md` for the model contract.
+
+```
+python runs/<project>/model.py --inputs "runs/<project>/Main Input.csv" \
+    --outdir runs/<project>/plots
+```
+
+Render the **real** plots (replacing the dummy plots from `/tea-model`) and present
+the headline metric(s), the charts, and the key sources/assumptions. Then
+`set-stage --stage complete`.
+
+**Light inline model fixes.** If real data exposes a small problem (a wrong
+formula, an obviously broken chart), you may edit `runs/<project>/model.py`
+directly. Editing it invalidates the `model_approved` approval, so immediately
+re-record it and note why in `decision-log.md`:
+
+```
+python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
+    --artifact model.py --artifact viz-spec.md
+```
+
+A structural change (new output, changed functional unit, a different chart set)
+is **not** a light fix — send the user back to `/tea-model` to revise and
+re-approve the model.
 
 ## Subagent contract
 

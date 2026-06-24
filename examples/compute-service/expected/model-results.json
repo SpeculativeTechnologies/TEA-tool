@@ -1,0 +1,19 @@
+{
+  "headline": {
+    "cost_per_1m_tokens_usd": 11.815068493150685,
+    "served_mtokens_per_month": 29200.0
+  },
+  "breakdown": {
+    "compute_hardware": 6.164383561643835,
+    "power_cooling": 1.36986301369863,
+    "networking": 0.5136986301369864,
+    "staffing": 3.0821917808219177,
+    "software_licensing": 0.684931506849315
+  },
+  "tag": "DUMMY",
+  "inputs_path": "examples/compute-service/model/dummy-inputs.csv",
+  "plots": [
+    "examples/compute-service/plots/cost_breakdown.png",
+    "examples/compute-service/plots/tornado.png"
+  ]
+}

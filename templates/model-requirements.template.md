@@ -1,10 +1,10 @@
 <!--
-model-requirements.md — written by the TEA orchestrator, not the analyst.
+model-requirements.md — written by /tea-scope, not the analyst.
 
 This is the third starting document (alongside scope.md and data-requirements.md).
-It records what the analyst's downstream model needs so a future V2 can add the
-model without repeating intake. V1 stops at populated, validated inputs: it does
-NOT build, run, or visualize the model.
+It is the SPECIFICATION that /tea-model implements as a runnable model.py: the
+outputs to compute, their formulas, and the schema cells each output consumes.
+Make it explicit and numeric.
 
 Keep every row's "required inputs" pointing at real schema cells
 (entity + parameter) so Stage 0 can confirm the parameter catalog covers every
@@ -20,8 +20,6 @@ Replace each bracketed prompt. Delete sections that do not apply.
 - **Project type:** [single run | comparison of N options]
 - **Functional unit:** [e.g. `1,000 lamp-hours at ~800 lumens`]
 - **Basis:** [currency], [base year], [inflation index], [geography]
-- **V1 stop:** input preparation only. This tool produces `Main Input.csv`,
-  `Reference Values.csv`, and the run manifest. The analyst runs the model.
 
 ## Desired outputs
 
@@ -62,8 +60,8 @@ numeric parameter in `tea-schema.json`.
 
 ## Intended formulas / calculation logic
 
-The calculation logic the model will apply, when known. Records intent for V2; V1
-does not execute it.
+The calculation logic the model applies. `/tea-model` implements this in `model.py`
+(reading the schema cells above), so keep it explicit enough to implement faithfully.
 
 ```
 [e.g.
@@ -87,8 +85,9 @@ total_operating_cost_per_fu = electricity_cost_per_fu + replacement_cost_per_fu
   operating hours per year, discount rate, utilization.]
 - [Unresolved dependencies or open questions that affect which inputs are needed.]
 
-## Explicit V1 stop
+## Handoff to /tea-model and /tea-data
 
-This document defines the inputs the model needs. V1 ends when every schema cell
-holds one finite numeric value. Model generation, execution, sensitivity
-analysis, and visualization are deferred to V2.
+This document defines the model. `/tea-model` builds `model.py` from the outputs and
+formulas above and dry-runs it on dummy values; `/tea-data` finalizes one finite
+numeric value per schema cell and runs the same `model.py` to produce the figures
+and results.
