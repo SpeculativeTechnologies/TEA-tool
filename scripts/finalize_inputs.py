@@ -167,32 +167,36 @@ def _auto_review_markdown(
         lines.append("No row-level `AUTO:` gate decisions were found in the supplied Audit file.")
 
     lines.extend(["", "## Assumptions And Estimates", ""])
-    estimates = [row for row in main_rows if (row.get("quality_tag") or "").strip().upper() == "E"]
+    estimates = [
+        row for row in main_rows if (row.get("quality_tag") or "").strip().upper() in {"E", "U"}
+    ]
     if estimates:
         lines.extend(
             [
-                "| entity | parameter | numeric value | units | confidence / assumptions |",
-                "|---|---|---:|---|---|",
+                "| entity | parameter | tag | numeric value | units | enabling assumption / confidence |",
+                "|---|---|---|---:|---|---|",
             ]
         )
         for row in estimates:
             value = row.get("capex_usd") or row.get("normalized_value") or ""
             units = row.get("normalized_units") or row.get("capex_form") or ""
+            tag = (row.get("quality_tag") or "").strip().upper()
             justification = str(row.get("estimate_justification") or "").strip()
             summary = justification
             try:
                 parsed = json.loads(justification) if justification else {}
                 confidence = parsed.get("estimator_confidence", "unspecified")
+                assumption = parsed.get("enabling_assumption") or ""
                 caveats = parsed.get("caveats") or []
-                summary = f"confidence={confidence}; caveats={caveats}"
+                summary = f"{assumption} (confidence={confidence}; caveats={caveats})"
             except (TypeError, json.JSONDecodeError):
                 pass
             lines.append(
                 f"| {_quote(row.get('entity'))} | {_quote(row.get('parameter'))} | "
-                f"{_quote(value)} | {_quote(units)} | {_quote(summary)} |"
+                f"{_quote(tag)} | {_quote(value)} | {_quote(units)} | {_quote(summary)} |"
             )
     else:
-        lines.append("No E-quality estimates were selected.")
+        lines.append("No estimates were selected.")
 
     lines.extend(["", "## Assumptions, Flags, And Technical Errors", ""])
     if run_log.strip():
@@ -250,6 +254,24 @@ def _manifest_markdown(
             lines.append(f"- {tag}: {count}")
     else:
         lines.append("- no filled cells")
+
+    unbacked = [row for row in main_rows if (row.get("quality_tag") or "").strip().upper() == "U"]
+    lines.extend(["", "## Unbacked Estimates (U) — VERIFY THESE", ""])
+    if unbacked:
+        lines.append(
+            "These cells had no sourceable anchor; they are transparent but **unbacked** "
+            "estimates. Treat them as the weakest inputs and shore them up first."
+        )
+        lines.extend(["", "| entity | parameter | value | units |", "|---|---|---:|---|"])
+        for row in unbacked:
+            value = row.get("capex_usd") or row.get("normalized_value") or ""
+            units = row.get("normalized_units") or row.get("capex_form") or ""
+            lines.append(
+                f"| {_quote(row.get('entity'))} | {_quote(row.get('parameter'))} | "
+                f"{_quote(value)} | {_quote(units)} |"
+            )
+    else:
+        lines.append("None — every estimate is backed by a real extracted anchor.")
 
     lines.extend(["", "## Shared Inputs", ""])
     if shared:

@@ -69,6 +69,11 @@ STATUSES = frozenset({"in_progress", "blocked", "awaiting_approval", "complete"}
 ISSUE_CATEGORIES = frozenset({"blocking", "decision"})
 ISSUE_STATUSES = frozenset({"open", "resolved", "dismissed"})
 
+#: A recorded sub-agent job is either ``completed`` (it actually ran) or
+#: ``skipped`` (a documented, reasoned exception — e.g. an unreadable source).
+#: A silent omission is neither, which is exactly what the spawn harness blocks.
+SUBAGENT_STATUSES = frozenset({"completed", "skipped"})
+
 _SLUG_STRIP_RE = re.compile(r"[^a-z0-9]+")
 
 
@@ -311,6 +316,81 @@ def set_stage(state: dict, target: str, *, today: str | None = None) -> dict:
     if today is not None:
         state["updated"] = today
     return state
+
+
+# ---------------------------------------------------------------------------
+# Sub-agent spawn ledger (anti-shortcut harness)
+# ---------------------------------------------------------------------------
+
+
+def record_spawn(
+    state: dict,
+    *,
+    stage: str,
+    agent_type: str,
+    unit: str,
+    status: str = "completed",
+    reason: str = "",
+    today: str | None = None,
+) -> dict:
+    """Record (idempotently) that a sub-agent job ran or was skipped-with-reason.
+
+    The harness derives the *expected* set of jobs per stage from the run's
+    manifests; this records the *actual* jobs the skill launched so a stage
+    transition can refuse to advance while any expected unit is unaccounted for
+    (note #4: no token-saving shortcuts). ``status='skipped'`` documents a
+    legitimate exception and requires a ``reason``; a silent omission is never
+    recorded and therefore blocks the gate.
+    """
+
+    stage = str(stage or "").strip()
+    agent_type = str(agent_type or "").strip()
+    unit = str(unit or "").strip()
+    if not stage:
+        raise StateError("record_spawn requires a stage")
+    if not agent_type:
+        raise StateError("record_spawn requires an agent_type")
+    if not unit:
+        raise StateError("record_spawn requires a unit")
+    if status not in SUBAGENT_STATUSES:
+        raise StateError(f"spawn status must be one of {sorted(SUBAGENT_STATUSES)}")
+    reason = str(reason or "").strip()
+    if status == "skipped" and not reason:
+        raise StateError("a skipped sub-agent job requires a reason")
+
+    entry = {
+        "stage": stage,
+        "agent_type": agent_type,
+        "unit": unit,
+        "status": status,
+        "reason": reason,
+    }
+    jobs = state.setdefault("subagent_jobs", [])
+    for existing in jobs:
+        if (
+            isinstance(existing, Mapping)
+            and existing.get("stage") == stage
+            and existing.get("agent_type") == agent_type
+            and existing.get("unit") == unit
+        ):
+            existing.update(entry)
+            if today is not None:
+                state["updated"] = today
+            return dict(existing)
+    jobs.append(entry)
+    if today is not None:
+        state["updated"] = today
+    return dict(entry)
+
+
+def spawn_jobs_for_stage(state: Mapping[str, object], stage: str) -> list[dict]:
+    """Return the recorded sub-agent jobs for one stage."""
+
+    return [
+        dict(job)
+        for job in state.get("subagent_jobs", [])
+        if isinstance(job, Mapping) and job.get("stage") == stage
+    ]
 
 
 # ---------------------------------------------------------------------------

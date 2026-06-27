@@ -1,0 +1,7 @@
+interface:
+  display_name: "TEA Data"
+  short_description: "Gather TEA evidence and run the model"
+  default_prompt: "Use $tea-data to gather evidence, populate the approved TEA model, and run the final analysis."
+
+policy:
+  allow_implicit_invocation: false

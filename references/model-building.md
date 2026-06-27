@@ -54,6 +54,12 @@ Implement `compute()`, `headline_metric()`, and `render()` from the
   outputs.
 - **Sensitivity by internal perturbation:** `tornado()` re-calls `compute()` with
   one input swung at a time — the reason `compute()` must stay pure.
+- **Benchmarks are not inputs.** If the schema declares a `BENCHMARK` entity, the
+  template's `load_inputs` already skips it (so benchmarks never feed a formula or
+  the tornado) and `load_benchmarks` exposes those cells. Implement the
+  `model-requirements.md` "Validation benchmarks" mapping in the
+  `results["validation"]` block — each researched benchmark compared against the
+  computed output it checks — so `/tea-data` can present computed-vs-literature.
 
 For a **comparison**, read one inputs CSV per option (repeat `--inputs` or accept a
 mapping) and add the option-comparison charts; keep a single project-level
@@ -87,19 +93,53 @@ ask them to confirm. Record the agreed set in `runs/<project>/viz-spec.md`
 
 ## 5. Dry run + smoke check
 
-Run the model on the dummy inputs, then validate the contract:
+Run the model on the dummy inputs, then validate the contract. Write the dummy
+figures and results to **dummy-tagged paths** (`plots-dummy/`,
+`model-results-DUMMY.json`) so the real `/tea-data` run later writes to `plots/`
+and `model-results.json` **without overwriting the dummy versions** — they stay
+on disk, clearly labelled, as a record of the structure check:
 
 ```
 python "$RUN/model.py" --inputs "$RUN/model/dummy-inputs.csv" \
-    --outdir "$RUN/plots" --results "$RUN/model-results.json" --tag DUMMY
+    --outdir "$RUN/plots-dummy" --results "$RUN/model-results-DUMMY.json" --tag DUMMY
 python scripts/check_model.py --model "$RUN/model.py" \
     --inputs "$RUN/model/dummy-inputs.csv"
 ```
 
-Present the dummy-data plots and the headline results for review, clearly flagged
-as DUMMY (structure check, not real numbers).
+The `--tag DUMMY` also stamps `[DUMMY]` on every chart title, so a stray figure is
+never mistaken for real data.
 
-## 6. Model-approval gate
+## 6. Excel workbook (spreadsheet view)
+
+Every model run also produces a viewer-friendly Excel workbook so people who think
+in spreadsheets rather than code or JSON can inspect the TEA. It is a **read-only
+presentation layer — values only, never formulas**; all numbers are computed by
+`model.py` and laid out by `scripts/export_workbook.py` (modelled on a
+conventional hand-built TEA workbook):
+
+- **Overview** — what the workbook is, data status (dummy vs. real), run details.
+- **Dashboard** — the headline metrics.
+- **Main Input** — the input table, with the input/value cells shaded grey.
+- **One sheet per intermediate output block** the model emitted (cost breakdown,
+  process groups, energy, recovery, scorecard, …) — driven generically off the
+  results JSON, so a richer model produces a richer workbook.
+- **Charts** — the rendered figures embedded inline.
+
+```
+python scripts/export_workbook.py --run-dir "$RUN" --tag DUMMY
+```
+
+`--run-dir` fills in the dummy defaults (`model/dummy-inputs.csv`,
+`model-results-DUMMY.json`, `plots-dummy/`) and writes
+`<project>-model-workbook-DUMMY.xlsx`. Present the dummy plots, the headline
+results, and the workbook for review — all clearly flagged as DUMMY (structure
+check, not real numbers).
+
+To make the workbook richer, have `compute()` return intermediate tables in the
+results dict (e.g. a `breakdown`, `groups`, `mass_balance`, or `cash_flow`
+block); each top-level section becomes its own sheet automatically.
+
+## 7. Model-approval gate
 
 On approval, lock the model + chosen charts, then hand off:
 
@@ -122,5 +162,6 @@ model is re-run verbatim on real data by `/tea-data`; only `--inputs` changes.
 
 ## Dependency
 
-The model layer needs **matplotlib** (`pip install matplotlib`); the core data
+The model layer needs **matplotlib** (`pip install matplotlib`) for charts and
+**openpyxl** (`pip install openpyxl`) for the Excel workbook; the core data
 pipeline stays standard-library-only.

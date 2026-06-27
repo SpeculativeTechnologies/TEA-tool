@@ -20,8 +20,12 @@ mis-scoped value is not.
 - `{{source_key}}`: the source key from `Sources.csv`.
 - `{{source_url}}`: the source URL from `Sources.csv`.
 - `{{source_quality_estimate}}`: default quality tag for this source, if any.
-- `{{source_content}}`: full source text or markdown, with page markers when
-  available.
+- `{{source_path}}`: the local path to the approved source file. **Read it
+  yourself** with the Read tool — including PDFs (page through long PDFs with the
+  Read `pages` range; do not rely on pre-extracted text). A `{{source_content}}`
+  excerpt may also be supplied for convenience, but the file at `{{source_path}}`
+  is authoritative and you should open it directly when you need a precise
+  `page_ref` or the excerpt is thin.
 - `{{coverage_targets}}`: the manifest entry's `coverage_targets` array.
 
 Each coverage target contains:
@@ -126,6 +130,17 @@ If no usable value is found, set:
 Do not use `reject` for a wrong physical quantity. If the source has a related
 but different quantity, emit a not-found row and explain the mismatch.
 
+### Unreadable Source
+
+A not-found row means *you read the source and the value is not there*. It does
+**not** mean you could not read the source. If the file at `{{source_path}}` is
+genuinely unreadable — a scanned image with no extractable text after a real
+attempt, a corrupt file, or an unsafe file you must not process — do not fabricate
+a slice of not-found rows that masquerades as a completed extraction. Instead set
+`"unreadable": true` in `extraction_summary`, leave `extracted_rows` empty, and
+explain what you tried in `overall_source_assessment`. The orchestrator records
+this slice as a documented skip so it is visible in the audit trail.
+
 ## Output JSON
 
 Return JSON only:
@@ -158,6 +173,7 @@ Return JSON only:
     "rows_clear": 1,
     "rows_hold": 0,
     "rows_reject": 0,
+    "unreadable": false,
     "overall_source_assessment": "Two or three sentences on coverage, surprises, and scope issues."
   }
 }

@@ -11,8 +11,14 @@ them and `/tea-data` re-runs this exact file on real data:
   re-running must regenerate everything. No network, no randomness, no hidden
   state.
 - **One figure per chosen visualization** written to `--outdir` (see the run's
-  `viz-spec.md`).
-- **A results JSON** with the `model-requirements.md` headline outputs.
+  `viz-spec.md`). The caller controls the dir, so the dry run writes to
+  `plots-dummy/` and the real run to `plots/` — dummy figures are never
+  overwritten.
+- **A results JSON** with the `model-requirements.md` headline outputs. Return any
+  intermediate tables here too (a `breakdown`, `groups`, `mass_balance`,
+  `cash_flow`, … block): `scripts/export_workbook.py` turns each top-level results
+  section into its own sheet in the viewer-friendly Excel workbook, so a richer
+  results dict yields a richer spreadsheet for non-coders to inspect.
 
 Usage:
     python model.py [--inputs CSV] [--outdir DIR] [--results JSON] [--tag TEXT]
@@ -37,6 +43,13 @@ ENTITY_KEYS = ("entity", "unit")
 PARAM_KEYS = ("parameter", "field")
 VALUE_KEYS = ("value", "capex_usd", "normalized_value")
 
+# Reserved entities that are collected + audited like any other cell but are NOT
+# model inputs. `BENCHMARK` carries external validation targets (e.g. a published
+# cost): the data step researches them with citations, and they are shown beside
+# the matching computed output rather than fed into any formula. Never read these
+# in compute()/tornado() — load_benchmarks() exposes them separately.
+RESERVED_NON_INPUT_ENTITIES = ("BENCHMARK",)
+
 
 def _first(row: dict, keys: tuple[str, ...]):
     for key in keys:
@@ -46,10 +59,9 @@ def _first(row: dict, keys: tuple[str, ...]):
     return None
 
 
-def load_inputs(path: str | Path) -> dict[tuple[str, str], float]:
-    """Return {(entity, parameter): float}. Non-numeric cells are skipped."""
+def _rows(path: str | Path):
+    """Yield (entity, parameter, float_value) for every numeric cell in the CSV."""
 
-    inputs: dict[tuple[str, str], float] = {}
     with open(path, newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             entity = _first(row, ENTITY_KEYS)
@@ -58,10 +70,33 @@ def load_inputs(path: str | Path) -> dict[tuple[str, str], float]:
             if entity is None or parameter is None or raw is None:
                 continue
             try:
-                inputs[(entity.strip(), parameter.strip())] = float(str(raw).replace(",", ""))
+                yield entity.strip(), parameter.strip(), float(str(raw).replace(",", ""))
             except ValueError:
                 continue  # JSON/text cell, header artifact, etc.
-    return inputs
+
+
+def load_inputs(path: str | Path) -> dict[tuple[str, str], float]:
+    """Return {(entity, parameter): float} of model inputs.
+
+    Non-numeric cells and reserved non-input entities (BENCHMARK) are skipped, so
+    benchmarks never enter a formula or the sensitivity sweep.
+    """
+
+    return {
+        (entity, parameter): value
+        for entity, parameter, value in _rows(path)
+        if entity not in RESERVED_NON_INPUT_ENTITIES
+    }
+
+
+def load_benchmarks(path: str | Path) -> dict[str, float]:
+    """Return {parameter: float} for the reserved BENCHMARK entity (may be empty)."""
+
+    return {
+        parameter: value
+        for entity, parameter, value in _rows(path)
+        if entity == "BENCHMARK"
+    }
 
 
 def get(inputs: dict, entity: str, parameter: str, default: float = float("nan")) -> float:
@@ -153,6 +188,15 @@ def main(argv=None) -> int:
 
     inputs = load_inputs(args.inputs)
     results = compute(inputs)
+
+    # Validation benchmarks: researched external targets, shown beside the
+    # computed outputs (not fed into compute()). /tea-model: map each benchmark
+    # parameter to the headline output it checks and report the gap, e.g.
+    #   {"total_cost_per_fu": {"computed": ..., "benchmark": ..., "pct_diff": ...}}
+    benchmarks = load_benchmarks(args.inputs)
+    if benchmarks:
+        results["validation"] = {"benchmarks": benchmarks}
+
     results["tag"] = args.tag
     results["inputs_path"] = str(args.inputs).replace("\\", "/")
     results["plots"] = render(inputs, results, args.outdir, tag=args.tag)

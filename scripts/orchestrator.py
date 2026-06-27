@@ -36,6 +36,7 @@ from datetime import datetime
 from pathlib import Path
 
 from lib import orchestrator_state as st
+from lib import spawn_harness
 from lib.csvio import SOURCES_FIELDNAMES, USER_INPUTS_FIELDNAMES, write_rows
 from lib.user_inputs import UserInputError, materialize_user_inputs
 
@@ -251,12 +252,79 @@ def cmd_validate_resume(run_dir: str | Path) -> dict:
     }
 
 
-def cmd_set_stage(run_dir: str | Path, stage: str, *, today: str | None = None) -> dict:
+def _forward_move(current: str, target: str) -> bool:
+    """A forward move advances exactly one stage (rewinds are amendments)."""
+
+    if current not in st.STAGES or target not in st.STAGES:
+        return False
+    return st.STAGES.index(target) == st.STAGES.index(current) + 1
+
+
+def cmd_set_stage(
+    run_dir: str | Path,
+    stage: str,
+    *,
+    today: str | None = None,
+) -> dict:
     run_dir = Path(run_dir)
     state = st.read_state(run_dir)
+    current = str(state.get("stage") or "")
+
+    # Anti-shortcut gate: when advancing forward, the stage being left must have
+    # every expected sub-agent job accounted for (run or skipped-with-reason).
+    # Rewinds (amendments) are never gated. There is no force override — a
+    # legitimate exception is recorded as a skipped job, not waved through.
+    if _forward_move(current, stage):
+        report = spawn_harness.verify_stage(run_dir, current, state)
+        if report["blocking"]:
+            raise OrchestratorError(
+                f"cannot advance {current!r} -> {stage!r}: the {current!r} stage has "
+                f"{len(report['missing'])} unaccounted sub-agent job(s) and "
+                f"{len(report['artifact_problems'])} missing output artifact(s). "
+                "Run the missing sub-agent(s), or record a documented exception with "
+                "`record-spawn --status skipped --reason ...`. "
+                f"Details: missing={report['missing']}, "
+                f"artifact_problems={report['artifact_problems']}"
+            )
+
     st.set_stage(state, stage, today=_today(today))
     st.write_state(run_dir, state, today=_today(today))
     return {"stage": state["stage"], "status": state["status"]}
+
+
+def cmd_record_spawn(
+    run_dir: str | Path,
+    *,
+    stage: str,
+    agent_type: str,
+    unit: str,
+    status: str = "completed",
+    reason: str = "",
+    today: str | None = None,
+) -> dict:
+    run_dir = Path(run_dir)
+    state = st.read_state(run_dir)
+    entry = st.record_spawn(
+        state,
+        stage=stage,
+        agent_type=agent_type,
+        unit=unit,
+        status=status,
+        reason=reason,
+        today=_today(today),
+    )
+    st.write_state(run_dir, state, today=_today(today))
+    return {"recorded": entry, "stage_total": len(st.spawn_jobs_for_stage(state, stage))}
+
+
+def cmd_expected_spawns(run_dir: str | Path, stage: str) -> dict:
+    return spawn_harness.stage_requirements(run_dir, stage)
+
+
+def cmd_verify_spawns(run_dir: str | Path, stage: str) -> dict:
+    run_dir = Path(run_dir)
+    state = st.read_state(run_dir)
+    return spawn_harness.verify_stage(run_dir, stage, state)
 
 
 # ---------------------------------------------------------------------------
@@ -560,6 +628,25 @@ def build_parser() -> argparse.ArgumentParser:
     p_stage.add_argument("--stage", required=True, choices=list(st.STAGES))
     p_stage.add_argument("--date")
 
+    p_spawn = sub.add_parser("record-spawn", help="Record a sub-agent job (anti-shortcut harness)")
+    p_spawn.add_argument("--run-dir", required=True)
+    p_spawn.add_argument("--stage", required=True, choices=list(st.STAGES))
+    p_spawn.add_argument("--agent-type", required=True)
+    p_spawn.add_argument("--unit", required=True, help="The unit of work (slice id, entity, gate name)")
+    p_spawn.add_argument(
+        "--status", choices=sorted(st.SUBAGENT_STATUSES), default="completed"
+    )
+    p_spawn.add_argument("--reason", default="", help="Required when --status skipped")
+    p_spawn.add_argument("--date")
+
+    p_expected = sub.add_parser("expected-spawns", help="Show expected sub-agent jobs for a stage")
+    p_expected.add_argument("--run-dir", required=True)
+    p_expected.add_argument("--stage", required=True, choices=list(st.STAGES))
+
+    p_verify = sub.add_parser("verify-spawns", help="Reconcile expected vs recorded jobs for a stage")
+    p_verify.add_argument("--run-dir", required=True)
+    p_verify.add_argument("--stage", required=True, choices=list(st.STAGES))
+
     p_mode = sub.add_parser("set-mode", help="Set (and optionally lock) the execution mode")
     p_mode.add_argument("--run-dir", required=True)
     p_mode.add_argument("--mode", required=True, choices=sorted(st.EXECUTION_MODES))
@@ -645,6 +732,26 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "set-stage":
             _emit(cmd_set_stage(args.run_dir, args.stage, today=args.date))
             return 0
+        if args.command == "record-spawn":
+            _emit(
+                cmd_record_spawn(
+                    args.run_dir,
+                    stage=args.stage,
+                    agent_type=args.agent_type,
+                    unit=args.unit,
+                    status=args.status,
+                    reason=args.reason,
+                    today=args.date,
+                )
+            )
+            return 0
+        if args.command == "expected-spawns":
+            _emit(cmd_expected_spawns(args.run_dir, args.stage))
+            return 0
+        if args.command == "verify-spawns":
+            summary = cmd_verify_spawns(args.run_dir, args.stage)
+            _emit(summary)
+            return 0 if summary["reconciled"] else 1
         if args.command == "set-mode":
             _emit(cmd_set_mode(args.run_dir, mode=args.mode, lock=args.lock, today=args.date))
             return 0

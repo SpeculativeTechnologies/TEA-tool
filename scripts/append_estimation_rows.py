@@ -33,8 +33,20 @@ from lib.search import SOURCE_KEY_RE, is_open_access_notes
 from lib.source_url import SourceUrlError, source_url_for
 
 
-ESTIMATE_QUALITY_TAG = "E"
-ALLOWED_METHODS = {"comparable", "first_principles", "failed"}
+# Backed single-anchor estimates keep the E tag; unbacked (Loop 3) estimates get
+# their own loud U tag so they are impossible to miss in the inputs and summary.
+BACKED_TAG = "E"
+UNBACKED_TAG = "U"
+ESTIMATE_TAGS = {BACKED_TAG, UNBACKED_TAG}
+# Kept for callers that import the old name (now means "the backed estimate tag").
+ESTIMATE_QUALITY_TAG = BACKED_TAG
+
+#: An estimate is either built on one real, extracted anchor (single_anchor) or,
+#: when no anchor can be sourced, an explicitly-flagged transparent estimate
+#: (unbacked). The old comparable/first_principles/failed split is retired — the
+#: Loop 1->2->3 ladder is the control flow now.
+ALLOWED_METHODS = {"single_anchor", "unbacked"}
+METHOD_TAG = {"single_anchor": BACKED_TAG, "unbacked": UNBACKED_TAG}
 HTTP_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 
 AUDIT_PROJECTABLE_KEYS = (
@@ -161,16 +173,20 @@ def normalize_cited_source(raw: Mapping[str, object], *, access_date: str) -> di
 
 
 def cited_sources_for_row(row: Mapping[str, object]) -> list[dict[str, str]]:
-    """Return structured cited source rows carried by an estimate row."""
+    """Return structured cited source rows carried by an estimate row.
+
+    A single-anchor estimate cites exactly the one extracted anchor source; the
+    anchor object itself counts as a cited source so it is registered.
+    """
 
     justification = _as_object(row.get("estimate_justification"))
     raw_sources: list[object] = []
     raw_sources.extend(_as_list(row.get("cited_sources")))
     raw_sources.extend(_as_list(justification.get("cited_sources")))
 
-    comparable = justification.get("comparable")
-    if isinstance(comparable, Mapping):
-        raw_sources.extend(_as_list(comparable.get("sources")))
+    anchor = justification.get("anchor")
+    if isinstance(anchor, Mapping) and _source_key(anchor):
+        raw_sources.append(anchor)
 
     access_date = dt.date.today().isoformat()
     out: list[dict[str, str]] = []
@@ -270,8 +286,11 @@ def _validate_cited_sources(
     errors: list[str],
 ) -> list[dict[str, str]]:
     sources = cited_sources_for_row(row)
-    if method != "failed" and not sources:
-        errors.append(f"{where}: non-failed estimates must include structured cited_sources")
+    if method != "single_anchor":
+        # Unbacked estimates carry no anchor source; nothing to register.
+        return sources
+    if not sources:
+        errors.append(f"{where}: single_anchor estimates must include the extracted anchor source")
         return sources
 
     keys = {source["source_key"] for source in sources if source["source_key"]}
@@ -291,9 +310,9 @@ def _validate_cited_sources(
             )
 
     row_source_key = str(row.get("source_key") or "").strip()
-    if method != "failed":
+    if True:
         if not row_source_key:
-            errors.append(f"{where}: source_key is required on non-failed estimate rows")
+            errors.append(f"{where}: source_key is required on single_anchor estimate rows")
         elif row_source_key not in keys:
             errors.append(
                 f"{where}: row source_key {row_source_key!r} must be one of the cited source keys"
@@ -312,32 +331,11 @@ def _validate_cited_sources(
     return sources
 
 
-def _validate_rubric(
-    comparable: Mapping[str, object],
-    schema: Schema,
-    where: str,
-    errors: list[str],
-) -> None:
-    dimensions = schema.rubric_dimensions
-    rubric = comparable.get("rubric")
-    if dimensions and not isinstance(rubric, Mapping):
-        errors.append(f"{where}: comparable.rubric is required by the schema rubric")
-        return
-    if not dimensions:
-        return
-    for dimension in dimensions:
-        item = rubric.get(dimension) if isinstance(rubric, Mapping) else None
-        if not isinstance(item, Mapping):
-            errors.append(f"{where}: comparable.rubric missing dimension {dimension!r}")
-            continue
-        score = str(item.get("score") or "").strip()
-        if score not in {"match", "partial", "mismatch"}:
-            errors.append(
-                f"{where}: rubric dimension {dimension!r} score must be match, partial, or mismatch"
-            )
-        rationale = str(item.get("rationale") or "").strip()
-        if len(rationale.split()) < 5:
-            errors.append(f"{where}: rubric dimension {dimension!r} needs a rationale")
+def _has_value(row: Mapping[str, object]) -> bool:
+    return any(
+        not is_nullish(row.get(key))
+        for key in ("raw_value", "normalized_value", "capex_usd")
+    )
 
 
 def _validate_method_shape(
@@ -348,40 +346,54 @@ def _validate_method_shape(
     where: str,
     errors: list[str],
 ) -> None:
-    justification = _as_object(row.get("estimate_justification"))
-    comparable = justification.get("comparable")
-    first_principles = justification.get("first_principles")
+    del schema
+    j = _as_object(row.get("estimate_justification"))
 
-    if method == "comparable":
-        if not isinstance(comparable, Mapping):
-            errors.append(f"{where}: comparable method requires estimate_justification.comparable")
+    # Common contract: every estimate names the bridging assumption, the equation
+    # it applies, the derivation, and which loop of the ladder produced it. Every
+    # estimate also carries a numeric value (no blank "failed" rows any more).
+    if not str(j.get("enabling_assumption") or "").strip():
+        errors.append(f"{where}: estimate_justification.enabling_assumption is required")
+    if not str(j.get("equation") or "").strip():
+        errors.append(f"{where}: estimate_justification.equation is required")
+    if not _as_list(j.get("derivation_steps")):
+        errors.append(f"{where}: estimate_justification.derivation_steps must be a non-empty list")
+    loop = j.get("loop")
+    if loop not in (1, 2, 3):
+        errors.append(f"{where}: estimate_justification.loop must be 1, 2, or 3")
+    if not _has_value(row):
+        errors.append(f"{where}: every estimate must carry a numeric value (no blank cells)")
+
+    if method == "single_anchor":
+        if loop == 3:
+            errors.append(f"{where}: loop 3 has no sourceable anchor; use method 'unbacked'")
+        anchor = j.get("anchor")
+        if not isinstance(anchor, Mapping):
+            errors.append(f"{where}: single_anchor method requires estimate_justification.anchor")
         else:
-            _validate_rubric(comparable, schema, where, errors)
-        if first_principles not in (None, ""):
-            errors.append(f"{where}: comparable method must leave first_principles null")
-    elif method == "first_principles":
-        if comparable not in (None, ""):
-            errors.append(f"{where}: first_principles method must leave comparable null")
-        if not isinstance(first_principles, Mapping):
-            errors.append(f"{where}: first_principles method requires first_principles object")
-            return
-        for field in ("equations", "parameters", "derivation_steps"):
-            if not _as_list(first_principles.get(field)):
-                errors.append(f"{where}: first_principles.{field} must be a non-empty list")
-        for idx, param in enumerate(_as_list(first_principles.get("parameters"))):
-            if not isinstance(param, Mapping):
-                errors.append(f"{where}: first_principles.parameters[{idx}] must be an object")
-                continue
-            if not any(str(param.get(key) or "").strip() for key in ("source_key", "source_url", "source")):
+            if not str(anchor.get("source_key") or "").strip():
+                errors.append(f"{where}: anchor.source_key is required")
+            if is_nullish(anchor.get("value")):
+                errors.append(f"{where}: anchor.value is required")
+            if not str(anchor.get("page_ref") or "").strip():
+                errors.append(f"{where}: anchor.page_ref is required (real extraction provenance)")
+            atag = str(anchor.get("quality_tag") or "").strip().upper()
+            if not atag or atag in ESTIMATE_TAGS:
                 errors.append(
-                    f"{where}: first_principles.parameters[{idx}] needs source_key, source_url, or source"
+                    f"{where}: anchor.quality_tag must be a real extraction tag (A-D), "
+                    "not blank or an estimate tag"
                 )
-    elif method == "failed":
-        if not str(justification.get("failure_reason") or "").strip():
-            errors.append(f"{where}: failed method requires failure_reason")
-        for key in ("raw_value", "normalized_value", "capex_usd", "review_value"):
-            if not is_nullish(row.get(key)):
-                errors.append(f"{where}: failed estimate must leave {key} blank/null")
+        for idx, c in enumerate(_as_list(j.get("assumed_constants"))):
+            if not isinstance(c, Mapping) or not str(c.get("symbol") or "").strip() or is_nullish(c.get("value")):
+                errors.append(f"{where}: assumed_constants[{idx}] needs a symbol and a value")
+    elif method == "unbacked":
+        if loop != 3:
+            errors.append(f"{where}: unbacked estimates are loop 3 (no sourceable anchor)")
+        anchor = j.get("anchor")
+        if isinstance(anchor, Mapping) and _source_key(anchor):
+            errors.append(f"{where}: unbacked estimate must not carry an anchor source")
+        if j.get("unbacked") is not True:
+            errors.append(f"{where}: unbacked estimate must set estimate_justification.unbacked = true")
 
 
 def _validate_numeric_bounds(
@@ -442,10 +454,6 @@ def validate_estimation_payload(doc: Mapping[str, object], schema: Schema) -> li
             errors.append(f"{where}: duplicate estimate row for ({entity},{parameter})")
         seen_rows.add((entity, parameter))
 
-        tag = str(row.get("quality_tag") or ESTIMATE_QUALITY_TAG).strip().upper()
-        if tag != ESTIMATE_QUALITY_TAG:
-            errors.append(f"{where}: quality_tag must be {ESTIMATE_QUALITY_TAG!r}")
-
         justification = _as_object(row.get("estimate_justification"))
         if not justification:
             errors.append(f"{where}: estimate_justification must be an object")
@@ -454,12 +462,13 @@ def validate_estimation_payload(doc: Mapping[str, object], schema: Schema) -> li
         if method not in ALLOWED_METHODS:
             errors.append(f"{where}: method {method!r} must be one of {sorted(ALLOWED_METHODS)}")
             continue
-        if schema.is_auto and method == "failed":
+
+        # E for a backed single-anchor estimate, U for an unbacked (loop 3) one.
+        tag = str(row.get("quality_tag") or METHOD_TAG[method]).strip().upper()
+        if tag != METHOD_TAG[method]:
             errors.append(
-                f"{where}: Auto mode requires a numeric estimate for every blank cell; "
-                "method 'failed' is not allowed"
+                f"{where}: quality_tag must be {METHOD_TAG[method]!r} for method {method!r}"
             )
-            continue
 
         cited_sources.extend(
             _validate_cited_sources(
@@ -490,7 +499,7 @@ def _existing_e_cells(audit_rows: list[dict[str, str]]) -> set[tuple[str, str]]:
     return {
         _cell(row)
         for row in audit_rows
-        if str(row.get("quality_tag") or "").strip().upper() == ESTIMATE_QUALITY_TAG
+        if str(row.get("quality_tag") or "").strip().upper() in ESTIMATE_TAGS
     }
 
 
@@ -504,7 +513,8 @@ def project_estimate_row(
     for key in AUDIT_PROJECTABLE_KEYS:
         value = row.get(key, "")
         out[key] = "" if value is None else str(value)
-    out["quality_tag"] = ESTIMATE_QUALITY_TAG
+    method = _method(_as_object(row.get("estimate_justification")))
+    out["quality_tag"] = str(row.get("quality_tag") or METHOD_TAG.get(method, BACKED_TAG)).strip().upper()
     out["relevance_status"] = str(row.get("relevance_status") or "clear")
     out["input_origin"] = str(row.get("input_origin") or "estimated")
     out["held_estimate_status"] = ""
@@ -566,7 +576,7 @@ def append_estimation_rows(
             for row in audit_rows
             if not (
                 _cell(row) in incoming_cells
-                and str(row.get("quality_tag") or "").strip().upper() == ESTIMATE_QUALITY_TAG
+                and str(row.get("quality_tag") or "").strip().upper() in ESTIMATE_TAGS
             )
         ]
     else:

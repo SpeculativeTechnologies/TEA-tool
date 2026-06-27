@@ -57,8 +57,13 @@ Full contract: `references/intake-and-compatibility.md`. In short:
    collect concise summaries. Inspect supplied material **before** asking. Never
    put confidential content in web queries.
 3. **Grill the scope.** Resolve ambiguity by **asking, not researching**. Ask
-   **one question at a time** — about **10–15** over the stage — walking each
-   branch of the decision tree and resolving dependencies in order. Give your
+   **one question at a time**, walking each branch of the decision tree and
+   resolving dependencies in order. Give the user an up-front estimate of how many
+   questions to expect (**~12**), but the governing rule is **ask until the scope
+   is unambiguous, not until you hit a number** — if ambiguity remains when you
+   reach the estimate, **say so out loud and keep going** (e.g. *"I'd said about a
+   dozen, but a few things are still open — let me ask 3–4 more before we lock
+   scope."*). Never trim necessary questions to honor the estimate. Give your
    **recommended answer** (and a one-line why) for every question so a non-expert
    can simply confirm or correct. Prefer your own knowledge and the supplied
    materials; if a question can be answered by inspecting a supplied file, do that
@@ -66,7 +71,9 @@ Full contract: `references/intake-and-compatibility.md`. In short:
    stuck on a specific factual point a question cannot resolve — never open-ended
    research. Cover: decision, system/options, boundary, functional unit, basis
    (geography/time/currency), desired outputs, supplied/fixed values,
-   entities/parameters, and major assumptions.
+   entities/parameters, major assumptions, and **which external benchmarks the
+   results should later be validated against** (name the metrics only — never fill
+   in benchmark values from memory; those are researched in `/tea-data`).
 4. **Classify supplied values** (fixed vs candidate) into `user-inputs.csv`.
 5. **Understanding check.** Summarize everything; require correction or approval;
    record `intake-summary.md`; `set-stage understanding_review`.
@@ -77,12 +84,38 @@ You (not the user) write `scope.md`, `data-requirements.md`, and
 `model-requirements.md` (templates in `templates/`). Make `model-requirements.md`
 explicit and numeric — it is the specification `/tea-model` implements as a
 runnable `model.py`, so spell out every output and its formula and map each
-required input to a real schema cell. Compile the schema
+required input to a real schema cell. Three things the docs must contain:
+
+- **Process flow chart (in `scope.md`).** Author a **Mermaid `flowchart`** showing
+  each process unit / entity as a node, the flows between them (the "connects to"
+  relationships) as edges, and the **key data each unit needs** annotated on its
+  node. This gives the user a one-glance picture of what is being modeled. It is
+  Mermaid text inside the markdown — diffable and editable, no separate image file.
+- **"How the model is solved" walkthrough (in `model-requirements.md`).** A
+  plain-language narrative of the solve order (inputs → per-entity calculations →
+  aggregation → functional-unit normalization → headline outputs), **followed by a
+  concrete worked example of one representative subcomponent** carried end to end.
+  Pick the subcomponent that best conveys the overall mechanics. Use a
+  **user-supplied fixed value** if one exists; otherwise use round, **clearly
+  labeled illustrative numbers** ("illustrative only — real values are gathered in
+  the data step"). The goal is to show *how* a number is produced, not to assert
+  any value.
+- **Benchmarks named, not valued.** Record the validation-target metrics the user
+  named (metric + unit), but **do not fill in benchmark values from your own
+  knowledge** — `/tea-data` researches them with citations. Each named benchmark
+  becomes a cell under the reserved `BENCHMARK` entity at schema-compile time (an
+  ordinary, audited cell the model is told to ignore as an input). If the user
+  named none, that is fine — no `BENCHMARK` entity is minted.
+
+Compile the schema
 (`prompts/stage0-schema-compile.md`; numeric-only — no JSON/TEXT cells), run the
 `tea-schema-reviewer` subagent and fix mechanical problems, then present a compact
 summary (assumptions, exclusions, input categories, extracted user-value counts,
 fixed inputs, links to the docs and `user-inputs.csv`) and require **explicit
-approval of all three documents**. On approval:
+approval of all three documents**. **Echo the "how the model is solved" walkthrough
+and the worked subcomponent example in the approval message itself** (condensed) —
+this is the moment the user decides, so do not make them dig into the doc to
+understand how their model will actually be computed. On approval:
 
 ```
 python scripts/orchestrator.py set-stage --run-dir RUN --stage starting_documents_review

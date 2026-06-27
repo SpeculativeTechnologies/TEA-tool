@@ -46,7 +46,8 @@ compile through the exact same path.
 
 - **`scope.md`** — narrative + decomposition (goal/framing, system boundary,
   functional unit, entity decomposition, basis assumptions, optional scenarios,
-  headline metrics, optional validation targets). See `templates/scope.template.md`.
+  headline metrics, optional validation targets/benchmarks — named but not valued).
+  See `templates/scope.template.md`.
 - **`data-requirements.md`** — the structured data spec (entities with scope
   frames + estimation policy; the parameter catalog with rule-types,
   applicability, reference-value flags, quality tags, estimation rubric). See
@@ -89,7 +90,7 @@ Authoritative shape is that file; this is the working reference (plan.md §4):
   "functional_unit": { "name": "kg billet", "symbol": "kg billet" },
   "basis": { "currency": "USD", "base_year": 2025,
              "inflation_index": "CEPCI|CPI|PPI|none", "geography": "US" },
-  "quality_tags": ["A","B","C","D","E"],
+  "quality_tags": ["A","B","C","D","E","U"],   // E = backed single-anchor estimate, U = unbacked (loop 3)
 
   "entities": [
     { "id": "1A", "name": "...", "output": "...", "description": "...",
@@ -159,6 +160,36 @@ per-entity cells; they are carried under the reserved global entity `REF`. Do
 price, a transit-bandwidth price, a loaded labor rate.) Represent reference
 values as ordinary parameters with these flags.
 
+### Validation benchmarks (reserved `BENCHMARK` entity)
+
+When the scope document names **validation targets / benchmarks** (external numbers
+the results are checked against — e.g. a published billet cost), compile each into a
+real, collectable cell so it rides the **same citation-backed evidence rounds** as
+every other input and inherits the full audit trail (`Sources.csv`, provenance,
+quality tags, the quality-reviewer pass). Do this with a single reserved entity:
+
+- Declare one ordinary entity with id **`BENCHMARK`** (only when at least one
+  benchmark is named — otherwise omit it entirely). It is mechanically a normal
+  entity: give it a `name`, an `estimation_policy` (`first_principles_only` is the
+  sensible default), and a `scope_frame` whose `in_scope` says it carries external
+  literature/reference values used to validate model outputs, not a process unit.
+- For each named benchmark, add an ordinary parameter with `applies_to:
+  ["BENCHMARK"]` and the right numeric `rule_type` (usually `MONETARY` for a
+  literature cost, or `PASSTHROUGH`/`INTENSITY` as the metric dictates) and units.
+- **Never seed a value.** The scope doc names the metric and unit; the value is
+  blank and researched downstream. Mirror each benchmark into the
+  `validation_targets` metadata block (`metric`, `unit`, and the output it checks)
+  so the human-readable list and the collectable cell stay in sync.
+
+`BENCHMARK` is **not** like `REF`: it is a declared entity (not a synthetic global),
+so the normal `cells()`/`build_csvs`/`finalize` machinery emits and fills its rows
+with no special code. The only special treatment is downstream — **`model.py` skips
+every `BENCHMARK` cell as a model input** and instead surfaces it beside the
+matching computed output. (Caveat to carry forward: because benchmark cells are
+finalized like any other, a benchmark with no findable source will be *estimated* by
+the ladder and tagged `E`/`U`; `/tea-data` must flag such a benchmark as
+estimated-not-literature so it is never mistaken for an independent check.)
+
 ### Scope frames (relevance gate, D7)
 
 Each entity carries a `scope_frame` with an `in_scope` prose description and a
@@ -168,12 +199,18 @@ frame is an open question (the relevance gate degrades without it).
 
 ### Estimation
 
-Set each entity's `estimation_policy` from the data-requirements doc
-(`comparables_first`, `first_principles_only`, or `either`). If **any** entity
-uses comparables (`comparables_first` or `either`), `estimation.comparable_rubric`
-is **required**: lift its `dimensions` and `hard_rule` from the doc's rubric
-spec. If no entity uses comparables, emit `"estimation": {}` — do not invent a
-rubric.
+Phase 6 estimation now runs a uniform single-anchor ladder (Loop 1→2→3) for every
+blank cell, so `estimation_policy` **no longer routes** the estimator — keep the
+field (it is still required by the schema) and set it from the data-requirements
+doc (`comparables_first`, `first_principles_only`, or `either`), but treat it as
+an informational hint, not control flow.
+
+The `estimation.comparable_rubric` is what matters: the scout uses it to judge how
+good an analogy's anchor is. If **any** entity uses comparables (`comparables_first`
+or `either`), the rubric is **required** — lift its `dimensions` and `hard_rule`
+from the doc's rubric spec. If no entity uses comparables, emit `"estimation": {}`.
+Prefer providing a rubric whenever analogy-based estimates are plausible, since the
+ladder leans on it.
 
 ---
 
@@ -289,7 +326,8 @@ Write to the run folder:
 - Reference values carry `reference_value`+`context_free`+`scope:"global"`+
   `canonical_unit` and **no** `applies_to`. (D8.)
 - Every `applies_to` list references a declared entity id. No entity uses the
-  reserved id `REF`.
+  reserved id `REF`. The reserved id `BENCHMARK` appears **only** when validation
+  targets were named, carries no seeded values, and is a normally-declared entity.
 - `comparable_rubric` is present **iff** an entity uses comparables.
 - `conventions_needed` matches `required_convention_files()`; exactly those
   convention files are scaffolded.

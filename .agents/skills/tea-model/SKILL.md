@@ -29,5 +29,10 @@ Code layout and are the single source of truth. Load them from the repo root:
   re-runs the same file on real data.
 - Dummy values are quick, rough, order-of-magnitude, from your own knowledge —
   **no web search**.
-- Needs **matplotlib**. The deterministic CLI `python scripts/orchestrator.py` is
-  the source of truth.
+- Dry-run figures + workbook go to dummy-tagged paths (`plots-dummy/`,
+  `<project>-model-workbook-DUMMY.xlsx`) so `/tea-data`'s real run never overwrites
+  them. Every run also emits a values-only Excel workbook via
+  `scripts/export_workbook.py` (main input, dashboard, intermediate outputs,
+  charts) for spreadsheet users.
+- Needs **matplotlib** (charts) and **openpyxl** (workbook). The deterministic CLI
+  `python scripts/orchestrator.py` is the source of truth.

@@ -26,8 +26,13 @@ from lib.shared_inputs import is_shared_row
 from lib.schema import GLOBAL_ENTITY_ID, Schema, load_schema
 
 
+# Backed estimates carry E, unbacked (loop 3) estimates carry U; both are
+# "already estimated" for the purpose of deciding whether a cell is still blank.
+ESTIMATE_TAGS = {"E", "U"}
 ESTIMATE_QUALITY_TAG = "E"
-ANCHOR_EXCLUDED_TAGS = {"D", "E"}
+# Anchors for new estimates must be real extraction evidence, never a prior
+# estimate (E/U) and never a weak D row.
+ANCHOR_EXCLUDED_TAGS = {"D", "E", "U"}
 
 
 def _now_iso() -> str:
@@ -64,7 +69,7 @@ def _existing_e_row(audit_rows: list[dict[str, str]], entity: str, parameter: st
     for row in audit_rows:
         if _cell(row) != (entity, parameter):
             continue
-        if _tag(row) != ESTIMATE_QUALITY_TAG:
+        if _tag(row) not in ESTIMATE_TAGS:
             continue
         if str(row.get("held_estimate_status") or "").strip().lower() == "reject":
             continue
@@ -84,7 +89,7 @@ def _selected_real_row(
             continue
         if is_shared_row(row):
             return True
-        if _tag(row) == ESTIMATE_QUALITY_TAG:
+        if _tag(row) in ESTIMATE_TAGS:
             continue
         if _truthy(row.get("selected_for_model")) and _has_model_value(row):
             return True
@@ -114,7 +119,7 @@ def _cell_is_blank(
         if is_shared_row(main):
             return False
         if _has_model_value(main):
-            if _tag(main) == ESTIMATE_QUALITY_TAG:
+            if _tag(main) in ESTIMATE_TAGS:
                 return force_refresh
             return False
 

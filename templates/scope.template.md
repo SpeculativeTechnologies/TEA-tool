@@ -72,6 +72,23 @@ entities in `tea-schema.json`.
 
 Notes on flows, dependencies, or ordering:
 
+### Process flow
+
+A one-glance picture of the process being modeled: one node per process unit /
+entity, edges for the flows between them (mirror the `connects to` column), and the
+**key data each unit needs** listed inside its node. Authored as a Mermaid
+`flowchart` so it renders inline in this markdown and stays editable as text.
+Replace the example below; keep node labels in plain analyst vocabulary.
+
+```mermaid
+flowchart LR
+    A["Feed prep<br/><i>feedstock price, prep energy</i>"] --> B["Reactor<br/><i>yield, residence time, CapEx</i>"]
+    B --> C["Separation<br/><i>recovery fraction, electricity</i>"]
+    C --> D["Finishing<br/><i>labor rate, packaging cost</i>"]
+    REF["REF (shared)<br/><i>electricity price, loaded labor rate</i>"] -.-> B
+    REF -.-> C
+```
+
 ## 7. Scope Frame By Entity
 
 For each entity, define what counts as relevant evidence. Name common variants
@@ -108,13 +125,19 @@ The tool records this context but does not run the model.
 
 - 
 
-## 10. Validation Targets
+## 10. Validation Targets (benchmarks)
 
-Optional benchmarks the analyst may later use outside the tool.
+Optional external benchmarks the model's results will be checked against. **Name
+the metric and unit only — leave the value blank.** Benchmark values are *not*
+assumed at scope time; `/tea-data` researches them with citations through the same
+evidence rounds as every other input, and the model surfaces them beside the
+matching computed output. Each row here is compiled into a cell under the reserved
+`BENCHMARK` entity (an audited cell the model ignores as an input). Fill the value
+column only if the user supplies a specific cited number they want pinned.
 
-| metric | target or range | unit | source |
-|---|---|---|---|
-|  |  |  |  |
+| metric | unit | acceptable range (if user-cited) | source (if user-supplied) | value |
+|---|---|---|---|---|
+|  |  |  |  | _researched in data step_ |
 
 ## 11. Known Constraints And Questions
 

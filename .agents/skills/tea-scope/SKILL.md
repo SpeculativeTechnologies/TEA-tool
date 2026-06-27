@@ -22,9 +22,11 @@ Code layout and are the single source of truth. Load them from the repo root:
   approved starting documents (`scope.md`, `data-requirements.md`,
   `model-requirements.md`), then hand off to `/tea-model`.
 - Resolve ambiguity by **asking, not researching**: a relentless,
-  one-question-at-a-time interview (~10–15 questions, each with a recommended
-  answer) grounded in your own knowledge. Reading user-supplied files is fine;
-  light web search only when genuinely stuck on a fact a question cannot resolve.
+  one-question-at-a-time interview, each question with a recommended answer,
+  grounded in your own knowledge. Give an up-front estimate (~12 questions) but
+  keep asking until the scope is unambiguous — announce it when you need to exceed
+  the estimate. Reading user-supplied files is fine; light web search only when
+  genuinely stuck on a fact a question cannot resolve.
 - Keep schemas, files, stages, and CSVs invisible. Plain language; you do the
   bookkeeping.
 - The deterministic CLI `python scripts/orchestrator.py` is the source of truth.

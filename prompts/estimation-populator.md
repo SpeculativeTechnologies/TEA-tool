@@ -1,51 +1,58 @@
 # Estimation Populator
 
-Run once for a single manifest entity. Produce one E-quality Audit row for each
-blank parameter listed in the manifest. Every non-failed row must cite
-structured URL-only sources so `scripts/append_estimation_rows.py` can register
-them in `Sources.csv` with `source_role=estimate`.
+Run once for a single manifest entity. Produce one estimate Audit row for each
+blank parameter listed in the manifest, using the single-anchor model:
+
+> **estimate = one real, extracted anchor data point + transparent assumed
+> constants + an enabling assumption (the bridge from the anchor's system to this
+> cell) + an equation that combines them.**
+
+A backed estimate (`method = single_anchor`, quality tag `E`) is built on exactly
+one anchor that was **actually extracted** through the real source pipeline, so it
+carries a real `source_key`, `page_ref`, and an A–D extraction `quality_tag`. Only
+the bridge and the arithmetic are the estimate layer. When no anchor could be
+sourced after the ladder, emit an unbacked estimate (`method = unbacked`, quality
+tag `U`) — transparent but explicitly flagged.
 
 ## Inputs
 
-Instantiate from `estimation_manifest.json` and the scout result:
+Instantiate from `estimation_manifest.json`, the scout result, and the anchor
+extraction the orchestrator already ran:
 
-- `{{entity}}`
-- `{{entity_name}}`
-- `{{scope_frame}}`
-- `{{estimation_policy}}`
+- `{{entity}}`, `{{entity_name}}`, `{{scope_frame}}`
 - `{{blank_parameters}}`
 - `{{existing_real_extractions}}`
-- `{{mode}}`: `comparable` or `first_principles`
-- `{{scout_output}}`: null for `first_principles_only`
-- `{{functional_unit}}`
-- `{{basis}}`
-- `{{comparable_rubric}}`
-- `{{execution_mode}}`
+- `{{loop}}`: `1`, `2`, or `3`
+- `{{mode}}`: `single_anchor` (loops 1–2) or `unbacked` (loop 3)
+- `{{scout_output}}`: chosen analogy + enabling assumption (null for `unbacked`)
+- `{{anchor_extraction}}`: the real extractor result for the anchor — its
+  `source_key`, `source_url`, `page_ref`, extracted `value`/`units`, and the A–D
+  `quality_tag` the extraction earned (null for `unbacked`)
+- `{{functional_unit}}`, `{{basis}}`, `{{execution_mode}}`
 
 ## Rules
 
-- Emit rows using `entity` and `parameter`.
-- Emit exactly one row for each `blank_parameters[]` item.
-- Do not emit a row for anything already present in
-  `existing_real_extractions`.
-- Use `quality_tag: "E"` and `relevance_status: "clear"`.
-- Do not use unsourced intuition. Each non-failed row needs a
-  `cited_sources[]` array, and the row's `source_key` must be one of those
-  cited source keys.
-- For comparable mode, repeat the scout comparable and rubric in
-  `estimate_justification.comparable`; do not rescore it.
-- For first-principles mode, show equations, sourced parameters, and derivation
-  steps. Any cited parameter should reference a `source_key` from
-  `cited_sources[]`.
-- If a value cannot be grounded, emit a failed row with blank value fields and
-  a `failure_reason`; this is better than a weak number.
-- In Auto mode, all cited evidence must be publicly inspectable without a
-  subscription, login, purchase, or access request. Search specifically for
-  open full text, repository copies, government publications, official public
-  datasets, open journals/preprints, and public technical documentation.
-  Include `access_notes` on every cited source. If no open evidence directly
-  reports the target, use open evidence for the underlying parameters and make
-  a transparent estimate rather than citing inaccessible evidence.
+- Emit rows using `entity` and `parameter`; exactly one row per
+  `blank_parameters[]` item; never a row for an `existing_real_extractions` cell.
+- Every row carries a numeric value (compute it from the anchor and the assumed
+  constants). There are **no blank rows** — loop 3 still produces a value.
+- `single_anchor` rows: `quality_tag = "E"`, `method = single_anchor`. The
+  `anchor` must be the real extracted anchor (`source_key`, `page_ref`, A–D
+  `quality_tag` — never `E`/`U` and never blank). The row's `source_key` is the
+  anchor's `source_key`. Use **exactly one** searched anchor; everything else in
+  the equation is an `assumed_constants[]` entry (a stoichiometric ratio, a
+  scaling exponent, a textbook constant) with a stated basis — not a second
+  search.
+- Name the `enabling_assumption` in one plain sentence: why the anchor's system is
+  similar enough to this cell (e.g. "double-melting metal Y is energetically
+  similar enough to metal X for this estimate"). Show the `equation` and the
+  `derivation_steps`.
+- `unbacked` rows (loop 3 only): `quality_tag = "U"`, `method = unbacked`,
+  `unbacked = true`, no `anchor`, no cited source. Still give the enabling
+  assumption, equation, derivation, a numeric value, low confidence, and clear
+  caveats.
+- In Auto mode, the anchor evidence must be openly inspectable; include
+  `access_notes` on the anchor confirming open/public full-text access.
 
 ## Output
 
@@ -54,117 +61,78 @@ Return one JSON object and no prose:
 ```json
 {
   "entity": "{{entity}}",
-  "mode_used": "first_principles",
+  "mode_used": "single_anchor",
   "rows": [
     {
       "entity": "{{entity}}",
-      "parameter": "monthly_cost",
-      "source_key": "benchmark-source-key",
-      "source_url": "https://example.com/benchmark",
-      "page_ref": "Table 2",
-      "raw_value": "100",
-      "raw_units": "USD/month",
-      "raw_basis_scale": null,
-      "raw_basis_scale_units": null,
-      "raw_basis_year": "2025",
-      "normalized_value": null,
-      "normalized_units": null,
+      "parameter": "specific_capex",
+      "source_key": "metal-y-doublemelt-capex",
+      "source_url": "https://example.com/metal-y",
+      "page_ref": "Table 4, p. 18",
+      "raw_value": "1320",
+      "raw_units": "USD/kg",
+      "raw_basis_year": "2024",
       "quality_tag": "E",
       "relevance_status": "clear",
-      "extractor_notes": "Estimate; see estimate_justification.",
-      "cited_sources": [
-        {
-          "source_key": "benchmark-source-key",
-          "title": "Benchmark source title",
-          "authors": "Author or organization",
-          "year": "2025",
-          "publisher_or_journal": "Publisher",
-          "source_url": "https://example.com/benchmark",
-          "access_notes": "open access full text verified",
-          "page_or_table_reference": "Table 2",
-          "notes": "Used for monthly benchmark."
-        }
-      ],
+      "extractor_notes": "Single-anchor estimate; see estimate_justification.",
       "estimate_justification": {
-        "method": "first_principles",
-        "cited_source_keys": ["benchmark-source-key"],
-        "comparable": null,
-        "first_principles": {
-          "method_name": "Transparent estimate name",
-          "equations": ["monthly_cost = unit_price * units_per_month"],
-          "parameters": [
-            {
-              "symbol": "unit_price",
-              "value": "100",
-              "units": "USD/month",
-              "source_key": "benchmark-source-key"
-            }
-          ],
-          "derivation_steps": [
-            "Step 1: read unit_price from benchmark-source-key Table 2.",
-            "Final: monthly_cost = 100 USD/month."
-          ]
+        "method": "single_anchor",
+        "loop": 1,
+        "enabling_assumption": "Double-melting of metal Y is energetically similar enough to metal X for a CAPEX estimate.",
+        "equation": "specific_capex_X = anchor_capex_Y * (scale_Y / scale_X) ** 0.6",
+        "anchor": {
+          "source_key": "metal-y-doublemelt-capex",
+          "source_url": "https://example.com/metal-y",
+          "title": "Metal Y double-melt cost study",
+          "page_ref": "Table 4, p. 18",
+          "value": "1100",
+          "units": "USD/kg",
+          "quality_tag": "B",
+          "access_notes": "open access full text verified"
         },
-        "estimator_confidence": "low",
-        "caveats": ["State the main uncertainty."]
+        "assumed_constants": [
+          {"symbol": "scaling_exponent", "value": "0.6", "units": "", "basis": "Williams six-tenths rule"},
+          {"symbol": "scale_ratio", "value": "1.2", "units": "", "basis": "relative plant scale"}
+        ],
+        "derivation_steps": [
+          "Read anchor_capex_Y = 1100 USD/kg from metal-y-doublemelt-capex Table 4.",
+          "Apply six-tenths scaling with scale_ratio 1.2: 1100 * 1.2**0.6 = 1320.",
+          "Final: specific_capex_X = 1320 USD/kg."
+        ],
+        "estimator_confidence": "medium",
+        "caveats": ["Bridges from metal Y; verify the melting-energy analogy."]
       }
     }
   ]
 }
 ```
 
-Comparable-mode rows use this justification shape:
-
-```json
-{
-  "method": "comparable",
-  "cited_source_keys": ["comparable-source-key"],
-  "comparable": {
-    "process_name": "Comparable name",
-    "slug": "comparable-name",
-    "rubric": {
-      "<schema dimension>": {"score": "match", "rationale": "Scout rationale."}
-    },
-    "sources": [
-      {
-        "source_key": "comparable-source-key",
-        "title": "Source title",
-        "source_url": "https://example.com/source",
-        "access_notes": "open access full text verified",
-        "page_ref": "Table 4",
-        "extracted_value": "Value used for this row."
-      }
-    ]
-  },
-  "first_principles": null,
-  "estimator_confidence": "medium",
-  "caveats": []
-}
-```
-
-Failed rows use:
+Unbacked (loop 3) rows use this shape:
 
 ```json
 {
   "entity": "{{entity}}",
   "parameter": "specific_capex",
-  "source_key": null,
-  "source_url": null,
-  "page_ref": "n/a (failed estimate)",
-  "raw_value": null,
-  "raw_units": null,
-  "normalized_value": null,
-  "normalized_units": null,
-  "quality_tag": "E",
+  "source_key": "",
+  "source_url": "",
+  "page_ref": "n/a (unbacked estimate)",
+  "raw_value": "1500",
+  "raw_units": "USD/kg",
+  "raw_basis_year": "2025",
+  "quality_tag": "U",
   "relevance_status": "clear",
   "estimate_justification": {
-    "method": "failed",
-    "cited_source_keys": [],
-    "comparable": null,
-    "first_principles": null,
+    "method": "unbacked",
+    "loop": 3,
+    "unbacked": true,
+    "enabling_assumption": "No sourceable anchor exists for any close analogue; transparent engineering judgment only.",
+    "equation": "specific_capex ~= typical specialty-metal melt CAPEX",
+    "derivation_steps": [
+      "Loops 1-2 found no openly sourceable anchor.",
+      "Assume a mid-range specialty-metal value: 1500 USD/kg."
+    ],
     "estimator_confidence": "low",
-    "caveats": ["Why no grounded estimate was possible."],
-    "failure_reason": "No grounded estimate available."
+    "caveats": ["Unbacked estimate — shore this up before relying on the result."]
   }
 }
 ```
@@ -172,11 +140,12 @@ Failed rows use:
 ## Self-Check
 
 - One row per blank parameter, no duplicates.
-- Every non-failed row has `cited_sources[]` with kebab-case `source_key` and
-  HTTP(S) `source_url`.
-- In Auto mode, every cited source has `access_notes` explicitly confirming
-  open/public full-text access.
-- The row `source_key` appears in `cited_sources[]`.
-- Numeric values already normalized by you obey basic bounds when present:
-  fractions in [0, 1], nonnegative monetary/intensity/rate values, and positive
-  `capex_usd` for CAPEX rows.
+- `single_anchor` rows: `quality_tag` `E`; `anchor` has a kebab-case
+  `source_key`, an HTTP(S) `source_url`, a `page_ref`, and an A–D `quality_tag`;
+  the row's `source_key` equals the anchor's; at most one searched anchor.
+- `unbacked` rows: `quality_tag` `U`, `loop` 3, `unbacked` true, no anchor.
+- Every row has `enabling_assumption`, `equation`, `derivation_steps`, and a
+  numeric value.
+- In Auto mode, the anchor carries `access_notes` confirming open access.
+- Numeric values obey basic bounds: fractions in [0, 1], nonnegative
+  monetary/intensity/rate values, positive CAPEX.

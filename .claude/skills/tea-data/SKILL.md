@@ -53,7 +53,12 @@ Follow `workflow.md` as the execution authority, Phase 1 → 7, driving the exis
 pipeline and read-only subagents (`tea-research-screener`, `tea-source-extractor`,
 `tea-quality-reviewer`). `set-stage` as you advance (`evidence_collection` …
 `finalization`). Materialize analyst inputs before search so fixed cells suppress
-redundant research. Present exactly one approval batch per research round; stage
+redundant research. **Benchmark cells (the reserved `BENCHMARK` entity) are
+researched in these same rounds** — they are validation targets the user named at
+scope time with no value, so find citation-backed literature values for them
+exactly like any other cell (same screener/extractor/quality machinery, same
+`Sources.csv` and audit trail). They simply are not model inputs: the model ignores
+them in its formulas and surfaces them beside the computed outputs at results time. Present exactly one approval batch per research round; stage
 open sources into `source-staging/` before Guided approval. Interrupt only at real
 gates and consequential decisions (Guided) per
 `references/interaction-and-gates.md`. No mode finalizes with blank cells; finalize
@@ -68,11 +73,42 @@ approved model on it and present the deliverable:
 ```
 python "$RUN/model.py" --inputs "$RUN/Main Input.csv" \
     --outdir "$RUN/plots" --results "$RUN/model-results.json"
+python scripts/export_workbook.py --run-dir "$RUN"
 ```
 
-Render the **real** plots (replacing the dummy ones from `/tea-model`) and present
-the headline metric(s), the charts, and the key sources/assumptions. Then
-`set-stage --stage complete`.
+The real run writes to `plots/` and `model-results.json`; the dummy figures from
+`/tea-model` stay in `plots-dummy/` (they are **not** overwritten). The workbook
+step writes the viewer-friendly `<project>-model-workbook.xlsx` — a values-only
+spreadsheet (no formulas) with the main input, a dashboard, the intermediate
+outputs, and the charts, for people who prefer Excel to code. Present the **real**
+plots, the headline metric(s), the charts, the workbook, and the key
+sources/assumptions. **If the run has benchmarks, present the validation comparison
+explicitly** — computed value vs. researched literature benchmark (with its source)
+for each target, from `results["validation"]`. Flag any benchmark cell that ended
+up **estimated rather than literature-sourced** (quality tag `E`/`U`): an estimated
+benchmark is not an independent check, so call it out so the user does not read it
+as one. Then `set-stage --stage complete`.
+
+**Show where the data lives (both modes, especially Auto).** The final chat
+message must not be a black box. After the results, list and **link** the key
+audit-trail files, each with a one-line "what's in here", so the user can drill
+into any number. Cover at least:
+
+- `final/Main Input.csv` — the model inputs, one row per cell (value, units, tag).
+- `Sources.csv` — every source with its URL and page/table reference.
+- `Audit_final_consolidated.csv` — full provenance: every candidate value, which
+  one won each cell, and why.
+- `final/run-manifest.md` — coverage, quality distribution, and the **Unbacked
+  Estimates (U)** list.
+- `plots/` and `model-results.json` — the charts and the headline numbers.
+- In Auto mode: `auto-run-log.md` and `final/auto-review.md` — the AI's gate
+  decisions, assumptions, and estimate reasoning.
+
+Call out, in plain language and up front, anything the user should double-check:
+every **`U` (unbacked) estimate** cell, and any source slice recorded as
+**skipped-with-reason** (e.g. an unreadable PDF). Get the skipped list from
+`orchestrator.py verify-spawns` / the run's `subagent_jobs`; get the `U` cells
+from `final/run-manifest.md`.
 
 **Light inline model fixes.** If real data exposes a small model problem (a wrong
 formula, an obviously broken chart), you may edit `runs/<project>/model.py`
@@ -95,3 +131,11 @@ quality reviewer). Subagents are read-only; you serialize all canonical writes
 through the CLI and phase scripts. Apply each material's sensitivity policy; never
 include confidential content in web queries. See
 `references/interaction-and-gates.md` for the full subagent contract.
+
+**No shortcuts.** Spawn the workers the work requires — one source extractor per
+extraction slice, one populator per blank-cell entity, the quality-reviewer pass
+before completeness review and finalization. Record each with
+`orchestrator.py record-spawn` (or a documented `--status skipped --reason ...`).
+The forward `set-stage` move is hard-blocked until every expected unit is
+accounted for, and the quality-reviewer pass cannot be skipped — see the
+"Spawn accounting" section of `references/interaction-and-gates.md`.

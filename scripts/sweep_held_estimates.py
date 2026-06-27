@@ -19,6 +19,7 @@ from lib.source_url import SourceUrlError, source_url_for
 
 HELD_ESTIMATES_FIELDNAMES = column_names(CSV_SCHEMAS["held_estimates.csv"])
 ESTIMATE_QUALITY_TAG = "E"
+ESTIMATE_TAGS = {"E", "U"}
 ANSWER_FIELDS = ("proposed_verdict", "analyst_value", "analyst_units", "analyst_answer", "notes")
 RESOLVED_STATUSES = {"clear", "accept", "accepted", "reject", "rejected"}
 
@@ -57,31 +58,10 @@ def _source_keys_from_justification(justification: Mapping[str, object]) -> list
     for source in justification.get("cited_sources") or []:
         if isinstance(source, Mapping):
             add(source.get("source_key") or source.get("key"))
-    comparable = justification.get("comparable")
-    if isinstance(comparable, Mapping):
-        for source in comparable.get("sources") or []:
-            if isinstance(source, Mapping):
-                add(source.get("source_key") or source.get("key"))
-    fp = justification.get("first_principles")
-    if isinstance(fp, Mapping):
-        for param in fp.get("parameters") or []:
-            if isinstance(param, Mapping):
-                add(param.get("source_key"))
+    anchor = justification.get("anchor")
+    if isinstance(anchor, Mapping):
+        add(anchor.get("source_key") or anchor.get("key"))
     return keys
-
-
-def _rubric_summary(justification: Mapping[str, object]) -> str:
-    comparable = justification.get("comparable")
-    if not isinstance(comparable, Mapping):
-        return ""
-    rubric = comparable.get("rubric")
-    if not isinstance(rubric, Mapping):
-        return ""
-    parts: list[str] = []
-    for dimension, item in rubric.items():
-        score = item.get("score") if isinstance(item, Mapping) else item
-        parts.append(f"{dimension}:{score}")
-    return ", ".join(parts)
 
 
 def _estimate_notes(row: Mapping[str, object]) -> str:
@@ -92,17 +72,20 @@ def _estimate_notes(row: Mapping[str, object]) -> str:
     caveats = justification.get("caveats")
     caveat_text = "; ".join(str(c) for c in caveats) if isinstance(caveats, list) else str(caveats or "")
     parts = [f"method={method}"]
+    loop = justification.get("loop")
+    if loop:
+        parts.append(f"loop={loop}")
+    if justification.get("unbacked") is True or method == "unbacked":
+        parts.append("UNBACKED ESTIMATE (no sourceable anchor)")
+    assumption = str(justification.get("enabling_assumption") or "").strip()
+    if assumption:
+        parts.append(f"enabling_assumption={assumption}")
     if confidence:
         parts.append(f"confidence={confidence}")
-    rubric = _rubric_summary(justification)
-    if rubric:
-        parts.append(f"rubric={rubric}")
     if source_keys:
-        parts.append(f"cited_source_keys={source_keys}")
+        parts.append(f"anchor_source_keys={source_keys}")
     if caveat_text:
         parts.append(f"caveats={caveat_text}")
-    if justification.get("failure_reason"):
-        parts.append(f"failure_reason={justification.get('failure_reason')}")
     prior_notes = str(row.get("notes") or "").strip()
     if prior_notes:
         parts.append(prior_notes)
@@ -133,7 +116,7 @@ def held_estimate_rows(
     out: list[dict[str, str]] = []
     carried = 0
     for row in audit_rows:
-        if str(row.get("quality_tag") or "").strip().upper() != ESTIMATE_QUALITY_TAG:
+        if str(row.get("quality_tag") or "").strip().upper() not in ESTIMATE_TAGS:
             continue
         if str(row.get("relevance_status") or "").strip().lower() == "reject":
             continue

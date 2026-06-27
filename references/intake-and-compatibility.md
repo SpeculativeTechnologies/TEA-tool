@@ -57,9 +57,14 @@ Reaching a correct scope is the heart of this stage. When the user is vague,
 knowledge to propose framing and interrogate the plan, in the spirit of a
 relentless design interview.
 
-- Ask **one question at a time** — roughly **10–15** over the stage — walking each
-  branch of the decision tree and resolving dependencies in order. Do not dump a
-  long questionnaire at once.
+- Ask **one question at a time**, walking each branch of the decision tree and
+  resolving dependencies in order. Do not dump a long questionnaire at once. Give
+  the user an **up-front estimate** (~12 questions) so the interview feels bounded,
+  but the real rule is **ask until the scope is unambiguous**: if open branches
+  remain when you reach the estimate, tell the user plainly that you need a few
+  more and continue (e.g. *"I'd said about a dozen — I haven't fully nailed the
+  boundary yet, so let me ask 3–4 more."*). Never sacrifice a necessary question to
+  hit the number.
 - For **every** question, give your **recommended answer** and a one-line why, so a
   non-expert can simply confirm or correct.
 - Prefer your own knowledge and the **user-supplied** materials over the web. If a
@@ -69,7 +74,10 @@ relentless design interview.
 - Cover the completeness checklist below through these questions: the decision,
   single-vs-comparison, system boundary, functional unit, basis
   (geography/time/currency), desired outputs, supplied/fixed values, proposed
-  entities/parameters, and major assumptions.
+  entities/parameters, major assumptions, and **which external benchmarks the
+  results should be validated against** (ask so "none" is a conscious choice, not
+  an oversight). Capture only the metric and unit — **never a benchmark value from
+  your own memory**; `/tea-data` researches the values with citations.
 
 ## Step 3 — Inspect and classify supplied values
 
@@ -118,8 +126,18 @@ comparability risk increase, then require confirmation.
 
 Use the standard A–E quality definitions unless the user requests a custom
 scheme. Infer estimation policies from calculation structure and parameter
-types; ask only when the choice would materially change the result. Validation
-targets are optional.
+types; ask only when the choice would materially change the result.
+
+**Validation targets / benchmarks are optional, but named — never valued — here.**
+Prompt the user for the external benchmarks their results should be checked against
+(e.g. "published cost of Ti-6Al-4V billet, USD/kg"). Record the **metric and unit
+only**. Do **not** fill in a benchmark number from your own knowledge — that would
+plant an assumed value into a defensibility check. The actual values are researched
+in `/tea-data` through the same citation-backed evidence rounds as every other
+cell. Each named benchmark is compiled into a cell under the reserved `BENCHMARK`
+entity (see `prompts/stage0-schema-compile.md`): an ordinary, audited cell that the
+model **ignores as an input** and instead surfaces beside the matching computed
+output. If the user names no benchmarks, mint no `BENCHMARK` entity.
 
 ## Step 5 — Understanding check
 
@@ -142,6 +160,19 @@ outputs and their formulas explicit and numeric. For comparisons use one
 project-level `model-requirements.md`; option folders hold option-specific
 `scope.md` and `data-requirements.md`.
 
+Two communication artifacts the docs must carry so a non-expert can actually
+*understand* their model — not just approve a black box:
+
+- **Process flow chart in `scope.md`.** A Mermaid `flowchart` (the template's
+  "Process flow" section) with one node per process unit/entity, edges for the
+  flows between them, and the key data each unit needs annotated on its node. Build
+  it from the entity decomposition; keep node labels in the user's plain vocabulary.
+- **"How the model is solved" in `model-requirements.md`.** A plain-language
+  walkthrough of the solve order plus **one worked subcomponent example** carried
+  end to end (see the template section). Prefer a user-supplied fixed value;
+  otherwise use clearly-labeled illustrative numbers — the example demonstrates the
+  *mechanics*, and must not assert any researched value (benchmarks included).
+
 Compile the schema per option with `prompts/stage0-schema-compile.md`. The schema
 is **numeric-only**: every cell ends with one finite numeric value; JSON/TEXT
 parameters are rejected. Keep categories, structured data, and notes in the
@@ -153,7 +184,11 @@ Run the schema/compatibility reviewer subagent; correct mechanical problems
 before the gate. Show a concise document summary, assumptions and exclusions,
 required input categories, extracted user-value counts and uncertain
 interpretations, fixed inputs, and links to the full documents and
-`user-inputs.csv`. Require explicit approval of all three documents. On approval:
+`user-inputs.csv`. **Echo, in the approval message itself, the "how the model is
+solved" walkthrough and the worked subcomponent example** (condensed) so the user
+understands how their model will be computed before they sign off — the chat
+message is where the decision happens, so it must not be a black box. Require
+explicit approval of all three documents. On approval:
 `approve --type starting_documents` (hashes the three documents) and
 `snapshot --label starting-documents`, then direct the user to run `/tea-model`.
 

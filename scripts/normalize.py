@@ -49,12 +49,14 @@ def normalize_audit(
     _fill_source_urls(rows, sources_path)
 
     conv = load_conventions(schema, conventions_dir)
-    tag = (only_quality_tag or "").strip().upper()
+    # Accept one tag or a comma-separated set (e.g. "E,U" to re-normalize both
+    # backed and unbacked estimate rows after Phase 6).
+    tags = {t.strip().upper() for t in (only_quality_tag or "").split(",") if t.strip()}
     out_rows: list[dict[str, str]] = []
     counts = {"total": len(rows), "targeted": 0, "normalized": 0, "capex": 0, "flagged": 0}
 
     for row in rows:
-        if tag and (row.get("quality_tag") or "").strip().upper() != tag:
+        if tags and (row.get("quality_tag") or "").strip().upper() not in tags:
             out_rows.append(dict(row))
             continue
         counts["targeted"] += 1

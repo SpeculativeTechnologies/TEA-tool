@@ -17,8 +17,12 @@ runs/<project>/
   model.py                  # bespoke runnable model (approved + hashed; /tea-model)
   model/dummy-inputs.csv    # quick dummy values for the dry run (/tea-model)
   viz-spec.md               # chosen visualizations (approved + hashed; /tea-model)
-  plots/                    # rendered figures: dummy (/tea-model) then real (/tea-data)
-  model-results.json        # headline outputs from the latest model run
+  plots-dummy/              # dummy figures from the dry run (/tea-model); kept, not overwritten
+  plots/                    # real rendered figures (/tea-data)
+  model-results-DUMMY.json  # dummy-run outputs (/tea-model)
+  model-results.json        # real-run headline outputs (/tea-data)
+  <project>-model-workbook-DUMMY.xlsx  # values-only Excel view of the dummy run (/tea-model)
+  <project>-model-workbook.xlsx        # values-only Excel view of the real run (/tea-data)
   user-inputs.csv           # analyst values mapped to schema cells
   user-sources.csv          # analyst/source registry (source_role may be analyst)
   provided-materials.json   # registered supplied materials

@@ -21,6 +21,9 @@ from .source_url import source_url_for
 DEFAULT_VALUE_DISAGREEMENT_THRESHOLD = 0.30
 WORST_QUALITY_RANK = 99
 ESTIMATE_QUALITY_TAG = "E"
+#: Backed (E) and unbacked (U) estimates alike must clear a held-estimate verdict
+#: before consolidation can trust them.
+ESTIMATE_TAGS = {"E", "U"}
 
 DISAGREEMENT_CLEAR = {"clear", "accept", "accepted", "keep", "kept"}
 DISAGREEMENT_REJECT = {"reject", "rejected", "drop", "dropped"}
@@ -373,7 +376,7 @@ def format_value_disagreement_error(
 def find_unresolved_held_estimates(rows: list[dict[str, str]]) -> list[dict[str, object]]:
     unresolved: list[dict[str, object]] = []
     for idx, row in enumerate(rows, start=2):
-        if str(row.get("quality_tag") or "").strip().upper() != ESTIMATE_QUALITY_TAG:
+        if str(row.get("quality_tag") or "").strip().upper() not in ESTIMATE_TAGS:
             continue
         if str(row.get("relevance_status") or "").strip().lower() == "reject":
             continue
@@ -400,7 +403,7 @@ def format_held_estimate_error(unresolved: list[dict[str, object]]) -> str:
     ]
     more = "" if len(unresolved) <= 10 else f"\n  ... +{len(unresolved) - 10} more"
     return (
-        f"{len(unresolved)} estimate row(s) (quality_tag=E) lack a held-estimate "
+        f"{len(unresolved)} estimate row(s) (quality_tag E/U) lack a held-estimate "
         "verdict. Run sweep_held_estimates.py and apply_held_estimates.py before "
         "consolidation.\n  "
         + "\n  ".join(lines)

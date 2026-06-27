@@ -222,7 +222,14 @@ python scripts/next_batch.py --manifest "$RUN/extractions/extraction_manifest.js
 ```
 
 Run `prompts/extractor.md` once per slice. Save each output JSON to the slice's
-`output_json` path.
+`output_json` path. Record each slice as it returns so the spawn gate can
+reconcile (a slice that genuinely cannot run — e.g. an unreadable source — is
+recorded as a documented skip, never silently dropped):
+
+```powershell
+python scripts/orchestrator.py record-spawn --run-dir "$RUN" --stage extraction --agent-type tea-source-extractor --unit SLICE_ID
+python scripts/orchestrator.py record-spawn --run-dir "$RUN" --stage extraction --agent-type tea-source-extractor --unit SLICE_ID --status skipped --reason "unreadable source, quarantined"
+```
 
 ### 3.2 Resolve Scope-Relevance Holds
 
@@ -307,6 +314,15 @@ Pinned cells always outrank ordinary rows.
 
 ## Phase 5 - Completeness Review
 
+Run the `tea-quality-reviewer` subagent over the consolidated inputs
+(`Main Input.csv`, consolidated `Audit`, `Sources.csv`) to assess coverage,
+quality, and residual gaps, then record the pass (it is mandatory and
+non-skippable):
+
+```powershell
+python scripts/orchestrator.py record-spawn --run-dir "$RUN" --stage completeness_review --agent-type tea-quality-reviewer --unit completeness_review
+```
+
 Review `$RUN/Main Input.csv` for coverage and quality.
 
 Choose one of these exits:
@@ -331,9 +347,27 @@ Build the estimation manifest:
 python scripts/build_estimation_manifest.py --schema "$RUN/tea-schema.json" --audit "$RUN/Audit_normalized_consolidated.csv" --main-input "$RUN/Main Input.csv" --output "$RUN/estimation_manifest.json"
 ```
 
-Run `prompts/estimation-orchestrator.md` with the manifest. It routes entity
-work to `prompts/estimation-scout.md` and `prompts/estimation-populator.md` as
-needed. Save the combined output as:
+Run `prompts/estimation-orchestrator.md` with the manifest. It drives the
+**single-anchor ladder** per entity (`prompts/estimation-scout.md` →
+`prompts/estimation-populator.md`):
+
+- **Loop 1** picks the best analogy and sources its single anchor through the
+  real pipeline (`gap-fill-search` → screen/download → `register_sources` →
+  `extraction_manifest` → `extractor` → `ingest`), then the populator builds a
+  backed `E` estimate from that real anchor + assumed constants + the enabling
+  assumption.
+- **Loop 2** retries with a more-likely-sourceable analogy if Loop 1's anchor
+  could not be found/extracted.
+- **Loop 3** emits a transparent, flagged **unbacked `U`** estimate when no
+  anchor is sourceable. No cell is ever left blank.
+
+Record the estimation sub-agents as they run (the stage is harnessed):
+
+```powershell
+python scripts/orchestrator.py record-spawn --run-dir "$RUN" --stage estimation --agent-type estimation-populator --unit ENTITY
+```
+
+Save the combined output as:
 
 ```text
 $RUN/estimation_output.json
@@ -351,9 +385,10 @@ python scripts/append_estimation_rows.py --schema "$RUN/tea-schema.json" --input
 python scripts/sweep_held_estimates.py --audit "$RUN/Audit_normalized_consolidated.csv" --output "$RUN/held_estimates.csv" --sources "$RUN/Sources.csv"
 ```
 
-Fill `proposed_verdict` with `accept`, `reject`, or `analyst-override`.
-Overrides require `analyst_value` and `analyst_units` and are re-tagged from
-`E` to `D`. Then:
+Fill `proposed_verdict` with `accept`, `reject`, or `analyst-override`. Both
+backed (`E`) and unbacked (`U`) estimates are swept here; unbacked rows are
+flagged in the queue notes so they get the most scrutiny. Overrides require
+`analyst_value` and `analyst_units` and are re-tagged from `E`/`U` to `D`. Then:
 
 ```powershell
 python scripts/apply_held_estimates.py --audit "$RUN/Audit_normalized_consolidated.csv" --queue "$RUN/held_estimates.csv"
@@ -365,7 +400,7 @@ confidence is recorded for final review but does not leave the cell blank.
 ### 6.3 Normalize And Re-Consolidate Estimate Rows
 
 ```powershell
-python scripts/normalize.py --schema "$RUN/tea-schema.json" --audit "$RUN/Audit_normalized_consolidated.csv" --output "$RUN/Audit_post_estimation_normalized.csv" --conventions-dir "$RUN/conventions" --sources "$RUN/Sources.csv" --only-quality-tag E
+python scripts/normalize.py --schema "$RUN/tea-schema.json" --audit "$RUN/Audit_normalized_consolidated.csv" --output "$RUN/Audit_post_estimation_normalized.csv" --conventions-dir "$RUN/conventions" --sources "$RUN/Sources.csv" --only-quality-tag E,U
 ```
 
 Re-run the normalization flag and value disagreement gates for the updated
@@ -376,6 +411,14 @@ python scripts/consolidate.py --schema "$RUN/tea-schema.json" --audit "$RUN/Audi
 ```
 
 ## Phase 7 - Hand Off
+
+Before finalizing, run the `tea-quality-reviewer` subagent once more over the
+post-estimation consolidated inputs and record the pass (mandatory,
+non-skippable):
+
+```powershell
+python scripts/orchestrator.py record-spawn --run-dir "$RUN" --stage finalization --agent-type tea-quality-reviewer --unit finalization
+```
 
 ### 7.1 Finalize Inputs
 

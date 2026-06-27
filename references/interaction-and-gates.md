@@ -85,8 +85,14 @@ search. If no credible substitute exists, leave the cell empty until estimation
 or user supply. Hands-off: do not ask the user to retrieve closed sources; search
 for the best open substitute; if none exists, proceed to estimation.
 
-Quarantine risky or unsupported files. Never execute embedded content. Seek a
-safe PDF, CSV, or plain-text representation.
+Extractors read approved source files directly, PDFs included (the source path is
+authoritative; long PDFs are paged through with the Read `pages` range). Never
+execute embedded content. If a source is genuinely unreadable (an empty scan, a
+corrupt file) or unsafe, it is **flagged, never silently dropped**: the extractor
+returns `extraction_summary.unreadable = true` and the orchestrator records that
+slice as a documented skip (`record-spawn --status skipped --reason "unreadable
+source"`), so it shows up in the audit trail and the closing summary. Optionally
+seek a safe alternate representation or an open substitute before skipping.
 
 ## Analyst inputs and fixed precedence
 
@@ -145,11 +151,23 @@ deliverable. See `references/model-building.md` for the model contract.
 ```
 python runs/<project>/model.py --inputs "runs/<project>/Main Input.csv" \
     --outdir runs/<project>/plots
+python scripts/export_workbook.py --run-dir runs/<project>
 ```
 
-Render the **real** plots (replacing the dummy plots from `/tea-model`) and present
-the headline metric(s), the charts, and the key sources/assumptions. Then
-`set-stage --stage complete`.
+The real run writes `plots/` and `model-results.json`; the dummy figures from
+`/tea-model` remain in `plots-dummy/` (**not** overwritten). The workbook step
+produces `<project>-model-workbook.xlsx`, a values-only Excel view (no formulas)
+of the inputs, headline dashboard, intermediate outputs, and charts. Present the
+**real** plots, the headline metric(s), the charts, the workbook, and the key
+sources/assumptions. Then `set-stage --stage complete`.
+
+**Transparency in the closing message (both modes).** Fast/Auto mode especially
+must not be a black box: list and link the key audit-trail files — `final/Main
+Input.csv`, `Sources.csv`, `Audit_final_consolidated.csv`, `final/run-manifest.md`,
+`plots/`, `model-results.json`, and in Auto mode `auto-run-log.md` /
+`final/auto-review.md` — each with a one-line description. Call out up front every
+unbacked **`U`** estimate cell and every source slice recorded as
+**skipped-with-reason**, so the user knows exactly what to double-check.
 
 **Light inline model fixes.** If real data exposes a small problem (a wrong
 formula, an obviously broken chart), you may edit `runs/<project>/model.py`
@@ -187,3 +205,47 @@ batch, entity, comparison option, or workflow-defined estimation unit.
 Sensitive-material policy applies to every subagent: `local-only` (never leaves
 the machine), `metadata-only` (only metadata may be processed/shared), or
 `normal-processing`. **Never include confidential content in web search queries.**
+
+## Spawn accounting (anti-shortcut harness)
+
+The orchestrator does not let you quietly spawn fewer workers than the work
+requires or skip the quality-reviewer pass. Expected counts are derived from the
+run's own manifests; you record what you actually launch; the stage gate
+reconciles the two.
+
+Record every sub-agent the moment it returns (or when you deliberately skip a
+unit):
+
+```
+python scripts/orchestrator.py record-spawn --run-dir RUN --stage STAGE \
+    --agent-type tea-source-extractor --unit SLICE_ID            # ran
+python scripts/orchestrator.py record-spawn --run-dir RUN --stage STAGE \
+    --agent-type tea-source-extractor --unit SLICE_ID \
+    --status skipped --reason "unreadable PDF, quarantined"      # documented skip
+```
+
+Expected units per stage (see `scripts/lib/spawn_harness.py`):
+
+- `extraction` — one `tea-source-extractor` per `extractions/extraction_manifest.json`
+  slice (`unit` = slice `id`). The slice's `output_json` must exist and be
+  non-empty (output-artifact backstop).
+- `estimation` — one `estimation-populator` per blank-cell entity in
+  `estimation_manifest.json` (`unit` = entity id). The single anchor's own
+  research/extraction spawns are recorded too, under the same stage.
+- `completeness_review` and `finalization` — exactly one `tea-quality-reviewer`
+  each (`unit` = the stage name). **Non-skippable**: a skip never satisfies it.
+
+Check status anytime; the forward `set-stage` move enforces it automatically:
+
+```
+python scripts/orchestrator.py expected-spawns --run-dir RUN --stage extraction
+python scripts/orchestrator.py verify-spawns  --run-dir RUN --stage extraction
+```
+
+`set-stage` refuses a forward move while the stage being left has any expected
+unit unaccounted for (not completed and not skipped-with-reason) or any completed
+slice missing its output artifact. There is **no force override** — a legitimate
+exception is a recorded `--status skipped --reason ...`, which also surfaces in
+the audit trail and the closing summary. Rewinds (amendments) are never gated.
+Stages without a derivable manifest (open-ended research rounds) are recorded but
+not hard-gated.

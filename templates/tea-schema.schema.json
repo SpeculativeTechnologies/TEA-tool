@@ -97,7 +97,7 @@
       }
     },
     "quality_tags": {
-      "description": "Ordered best-to-worst quality classes. Default A/B/C/D/E; E is reserved for estimates (Phase 6) and an analyst override re-tags E->D.",
+      "description": "Ordered best-to-worst quality classes. Default A/B/C/D/E/U; E is a backed single-anchor estimate and U is an unbacked (loop 3) estimate (Phase 6). An analyst override re-tags E/U -> D.",
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
       "minItems": 1,

@@ -10,7 +10,7 @@
     "inflation_index": "CPI",
     "geography": "US"
   },
-  "quality_tags": ["A", "B", "C", "D", "E"],
+  "quality_tags": ["A", "B", "C", "D", "E", "U"],
 
   "entities": [
     {

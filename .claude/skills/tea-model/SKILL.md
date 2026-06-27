@@ -47,7 +47,12 @@ Per `references/model-building.md`:
    (reads `(entity, parameter)` values), **one figure per chosen chart** to
    `--outdir`, and a **results JSON** of the headline outputs. No hard-coded
    numbers, no network, no randomness — so the same file re-runs on real data in
-   `/tea-data`.
+   `/tea-data`. If the schema has a `BENCHMARK` entity, the template already
+   **excludes it from inputs** (`load_inputs` skips it; benchmarks never enter a
+   formula or the tornado) and exposes it via `load_benchmarks` — wire the
+   `results["validation"]` block to compare each benchmark against the output it
+   checks (per the `model-requirements.md` "Validation benchmarks" table), so the
+   real run shows computed-vs-literature side by side.
 3. **Quick dummy values.** Write `runs/<project>/model/dummy-inputs.csv`
    (`entity,parameter,value`) — fast, rough, order-of-magnitude numbers from your
    own knowledge. **No web search.** They exist only to validate structure, units,
@@ -56,11 +61,22 @@ Per `references/model-building.md`:
    whether it is single vs. comparison), refine it via plain chat, ask the user to
    confirm, and record `runs/<project>/viz-spec.md`
    (`templates/viz-spec.template.md`).
-5. **Dry run + smoke check.** Run the model on the dummy inputs
-   (`--tag DUMMY`), then `python scripts/check_model.py --model "$RUN/model.py"
-   --inputs "$RUN/model/dummy-inputs.csv"`. Present the dummy plots + headline
-   results, clearly flagged as DUMMY (a structure check, not real numbers).
-6. **Gate.** On approval:
+5. **Dry run + smoke check.** Run the model on the dummy inputs to a **separate
+   dummy plot dir so the real run never overwrites them**
+   (`--outdir "$RUN/plots-dummy" --tag DUMMY`), then `python scripts/check_model.py
+   --model "$RUN/model.py" --inputs "$RUN/model/dummy-inputs.csv"`.
+6. **Excel workbook (spreadsheet view of the outputs).** Build a viewer-friendly
+   workbook so non-coders can inspect the model the way they would a hand-built
+   spreadsheet — main input sheet, dashboard of headline numbers, a sheet per
+   block of intermediate outputs, and the embedded charts (values only, **no
+   formulas** — everything comes from the code):
+   ```
+   python scripts/export_workbook.py --run-dir "$RUN" --tag DUMMY
+   ```
+   This writes `<project>-model-workbook-DUMMY.xlsx`. Present the dummy plots,
+   headline results, and the workbook — all clearly flagged as DUMMY (a structure
+   check, not real numbers).
+7. **Gate.** On approval:
    ```
    python scripts/orchestrator.py set-stage --run-dir RUN --stage model_review
    python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
@@ -73,6 +89,7 @@ Per `references/model-building.md`:
 
 ## Dependency + subagents
 
-The model layer needs **matplotlib** (`pip install matplotlib`); the core pipeline
+The model layer needs **matplotlib** (`pip install matplotlib`) for charts and
+**openpyxl** (`pip install openpyxl`) for the Excel workbook; the core pipeline
 stays standard-library-only. Reuse read-only subagents only as needed; you
 serialize all canonical writes through the CLI and phase scripts.

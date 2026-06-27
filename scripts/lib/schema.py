@@ -626,13 +626,16 @@ def _semantic(data: dict, report: ValidationReport) -> None:
             "comparables-first (or 'either') estimation policy, so the scout needs a rubric."
         )
 
-    # Quality tag 'E' is how Phase 6 tags estimates.
+    # Phase 6 tags backed estimates 'E' and unbacked (loop 3) estimates 'U'.
     qt = data.get("quality_tags")
-    if isinstance(qt, list) and "E" not in qt:
-        report.warnings.append(
-            "quality_tags does not include 'E'; Phase 6 estimates are tagged 'E'. Confirm the "
-            "estimate tag if you renamed it."
-        )
+    if isinstance(qt, list):
+        for tag in ("E", "U"):
+            if tag not in qt:
+                kind = "backed" if tag == "E" else "unbacked"
+                report.warnings.append(
+                    f"quality_tags does not include {tag!r}; Phase 6 tags {kind} estimates "
+                    f"{tag!r}. Confirm the estimate tag if you renamed it."
+                )
 
     # Numeric-only contract (both execution modes): every final TEA cell must end
     # with one finite numeric model value, so JSON/TEXT parameters are rejected in
