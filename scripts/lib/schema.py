@@ -96,7 +96,7 @@ _ENTITY_KEYS = frozenset(
 _SCOPE_FRAME_KEYS = frozenset({"in_scope", "known_out_of_scope"})
 _PARAMETER_KEYS = frozenset(
     {
-        "id", "label", "rule_type", "applies_to", "first_class", "context_free",
+        "id", "label", "rule_type", "applies_to", "search_targetable", "context_free",
         "reference_value", "scope", "units", "numerator_units", "per",
         "canonical_unit", "basis", "market_basis", "capex_form", "description", "notes",
     }
@@ -441,7 +441,7 @@ def _structural_parameter(p, where, err, check_unknown, require) -> None:
             err(f"{where}/applies_to", "entity ids must be non-empty strings")
         elif len(set(applies)) != len(applies):
             err(f"{where}/applies_to", "entity ids must be unique")
-    for boolkey in ("first_class", "context_free", "reference_value"):
+    for boolkey in ("search_targetable", "context_free", "reference_value"):
         if boolkey in p and not isinstance(p[boolkey], bool):
             err(f"{where}/{boolkey}", "must be a boolean")
     if "scope" in p and p["scope"] not in PARAMETER_SCOPES:
@@ -692,6 +692,30 @@ def _duplicates(items: list) -> list:
     return dups
 
 
+def _migrate_legacy_param_keys(data) -> None:
+    """In-place migration of deprecated parameter keys before validation.
+
+    ``first_class`` was renamed to ``search_targetable`` (the flag means "this
+    parameter justifies spending a dedicated source search on it"). Externally
+    authored schemas may still carry the old key; map it across so they keep
+    loading. Runs before structural validation because the JSON Schema forbids
+    unknown properties on a parameter.
+    """
+    if not isinstance(data, dict):
+        return
+    migrated = False
+    for p in data.get("parameters", []):
+        if isinstance(p, dict) and "first_class" in p and "search_targetable" not in p:
+            p["search_targetable"] = p.pop("first_class")
+            migrated = True
+    if migrated:
+        print(
+            "warning: schema uses deprecated parameter key 'first_class'; "
+            "treating it as 'search_targetable'. Please rename it.",
+            file=sys.stderr,
+        )
+
+
 def validate_schema(data) -> ValidationReport:
     """Validate a parsed config. Returns a report (does not raise).
 
@@ -699,6 +723,7 @@ def validate_schema(data) -> ValidationReport:
     shape is unusable; otherwise both layers run so the analyst sees everything
     at once.
     """
+    _migrate_legacy_param_keys(data)
     report = ValidationReport()
     structural = _structural_with_jsonschema(data) if isinstance(data, dict) else None
     if structural is None:
@@ -856,8 +881,8 @@ class Schema:
     def is_context_free(self, parameter_id: str) -> bool:
         return bool(self.parameter(parameter_id).get("context_free"))
 
-    def is_first_class(self, parameter_id: str) -> bool:
-        return bool(self.parameter(parameter_id).get("first_class"))
+    def is_search_targetable(self, parameter_id: str) -> bool:
+        return bool(self.parameter(parameter_id).get("search_targetable"))
 
     @property
     def reference_value_parameters(self) -> list[dict]:
@@ -868,8 +893,8 @@ class Schema:
         return [p for p in self._data.get("parameters", []) if p.get("context_free")]
 
     @property
-    def first_class_parameters(self) -> list[dict]:
-        return [p for p in self._data.get("parameters", []) if p.get("first_class")]
+    def search_targetable_parameters(self) -> list[dict]:
+        return [p for p in self._data.get("parameters", []) if p.get("search_targetable")]
 
     @property
     def entity_parameters(self) -> list[dict]:

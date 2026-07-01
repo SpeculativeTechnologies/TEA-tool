@@ -1,12 +1,13 @@
 # Codex / OpenAI registration policy for the tea-data skill (Step 3 of the TEA
-# orchestrator, run in series: tea-scope -> tea-model -> tea-data). Explicitly
-# invoked only; never self-trigger on general TEA questions. Platform-neutral
-# instructions live in .claude/skills/tea-data/ and the shared references/
-# folder, cited from the SKILL.md next to this file.
+# orchestrator, run in series: tea-scope -> tea-model -> tea-data -> tea-insights).
+# Explicitly invoked only; never self-trigger on general TEA questions.
+# Platform-neutral instructions live in .claude/skills/tea-data/ and the shared
+# references/ folder, cited from the SKILL.md next to this file.
 name: tea-data
 description: >-
   Step 3 of the explicitly-invoked TEA orchestrator (tea-scope -> tea-model ->
-  tea-data). Gathers real citation-backed evidence (auto or guided), populates the
-  approved model, and runs it to produce real-data charts and results.
+  tea-data -> tea-insights). Gathers real citation-backed evidence (auto or
+  guided), populates the approved model's inputs, and finalizes the gap-free input
+  set, then hands off to tea-insights to run the model.
 policy:
   allow_implicit_invocation: false

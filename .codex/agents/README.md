@@ -1,7 +1,7 @@
 # TEA Orchestrator — specialist agents (Codex roster)
 
 These reusable, **read-only** specialist roles are spawned by the TEA orchestrator
-skills (`/tea-scope`, `/tea-model`, `/tea-data`). Their canonical definitions (with frontmatter and the full role contract)
+skills (`/tea-scope`, `/tea-model`, `/tea-data`, `/tea-insights`). Their canonical definitions (with frontmatter and the full role contract)
 live in `.claude/agents/tea-*.md` and are platform-neutral — a Codex runtime
 should load the matching file for the full brief. This roster is the index.
 

@@ -161,7 +161,7 @@ def write_stage0_inputs(run_dir: Path) -> Path:
                     "rule_type": "RATE",
                     "units": "kW",
                     "applies_to": ["boil_water"],
-                    "first_class": True,
+                    "search_targetable": True,
                     "description": "Nominal electric-kettle power draw.",
                 },
                 {
@@ -171,7 +171,7 @@ def write_stage0_inputs(run_dir: Path) -> Path:
                     "numerator_units": "kWh",
                     "per": "functional_unit",
                     "applies_to": ["boil_water"],
-                    "first_class": True,
+                    "search_targetable": True,
                     "description": "First-principles sensible heat to raise one liter of water to boiling.",
                 },
                 {

@@ -280,6 +280,26 @@ class AccessorTests(unittest.TestCase):
         entity_param_ids = {p["id"] for p in self.ti.entity_parameters}
         self.assertNotIn("electricity_price", entity_param_ids)
 
+    def test_search_targetable_accessor(self):
+        self.assertTrue(self.ti.is_search_targetable("electricity"))
+        self.assertFalse(self.ti.is_search_targetable("feedstock_quantity"))
+        targetable_ids = {p["id"] for p in self.ti.search_targetable_parameters}
+        self.assertIn("electricity", targetable_ids)
+        self.assertNotIn("feedstock_quantity", targetable_ids)
+
+    def test_legacy_first_class_key_is_migrated(self):
+        # Externally-authored schemas may still carry the old `first_class` key;
+        # it must load and behave as `search_targetable`.
+        raw = load_fixture(TI)
+        for p in raw["parameters"]:
+            if "search_targetable" in p:
+                p["first_class"] = p.pop("search_targetable")
+        schema = Schema(raw)
+        self.assertEqual(schema.report.errors, [])
+        self.assertTrue(schema.is_search_targetable("electricity"))
+        # The deprecated key is gone after migration.
+        self.assertNotIn("first_class", schema.parameter("electricity"))
+
     def test_required_convention_files(self):
         self.assertEqual(
             self.ti.required_convention_files(),

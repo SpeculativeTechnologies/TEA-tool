@@ -63,13 +63,13 @@ Allowed rule types:
 - `JSON`: structured machine data carried verbatim.
 - `TEXT`: free-form notes.
 
-| parameter id | label | rule_type | applies_to | first_class | units | numerator_units | per | canonical_unit | basis | description |
+| parameter id | label | rule_type | applies_to | search_targetable | units | numerator_units | per | canonical_unit | basis | description |
 |---|---|---|---|---|---|---|---|---|---|---|
 |  |  |  | all or entity ids | true/false |  |  | functional_unit or entity_output |  |  |  |
 
 Guidance:
 
-- Use `first_class=true` when the parameter justifies its own source search.
+- Use `search_targetable=true` when the parameter justifies its own source search.
 - For `INTENSITY`, provide `numerator_units` and `per`.
 - For `RATE`, provide `units`.
 - For `FRACTION`, state the basis if relevant.

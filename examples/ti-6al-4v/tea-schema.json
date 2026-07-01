@@ -90,7 +90,7 @@
   "parameters": [
     {
       "id": "specific_capex", "label": "Specific CapEx", "rule_type": "CAPEX",
-      "applies_to": "all", "first_class": true,
+      "applies_to": "all", "search_targetable": true,
       "capex_form": "specific_per_annual_output",
       "description": "Capital cost per annual tonne of entity output, carried to source-year USD (no escalation at normalize time)."
     },
@@ -101,11 +101,11 @@
     },
     {
       "id": "electricity", "label": "Electricity", "rule_type": "INTENSITY",
-      "numerator_units": "kWh", "per": "entity_output", "applies_to": "all", "first_class": true
+      "numerator_units": "kWh", "per": "entity_output", "applies_to": "all", "search_targetable": true
     },
     {
       "id": "thermal_energy", "label": "Thermal energy", "rule_type": "INTENSITY",
-      "numerator_units": "MJ", "per": "entity_output", "applies_to": "all", "first_class": true
+      "numerator_units": "MJ", "per": "entity_output", "applies_to": "all", "search_targetable": true
     },
     {
       "id": "feedstock_quantity", "label": "Feedstock quantity", "rule_type": "INTENSITY",

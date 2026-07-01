@@ -38,7 +38,7 @@ it from the two input docs.
 - `templates/tea-schema.schema.json` — JSON Schema for the config (entities w/
   scope_frame + estimation_policy; parameters w/ rule_type ∈
   {MONETARY,INTENSITY,FRACTION,RATE,CAPEX,PASSTHROUGH,JSON,TEXT}, applies_to,
-  first_class, context_free, reference_value, scope; basis w/ inflation_index ∈
+  search_targetable, context_free, reference_value, scope; basis w/ inflation_index ∈
   {CEPCI,CPI,PPI,none}; functional_unit; estimation.comparable_rubric;
   conventions_needed; validation_targets). See plan.md §4 for the shape.
 - `prompts/stage0-schema-compile.md` — reads `scope.md` + `data-requirements.md`
@@ -112,7 +112,7 @@ context-free reference-value search (D8).
   `context_free` reference-value targets** ("must not mention the TEA/system").
   Candidate JSON schema.
 - `prompts/gap-fill-search.md` — per-entity targeted search; URL-only locators;
-  ≤N cap from config (default 5); first-class-parameter eligibility from config.
+  ≤N cap from config (default 5); search-targetable-parameter eligibility from config.
 - `scripts/rename_sources.py` — filename normalization to
   `{entity_or_chain}_{source_key}.{ext}` (config-aware).
 - `scripts/register_sources.py` — append candidates to `Sources.csv` with

@@ -2,7 +2,8 @@
 name: tea-model
 description: >-
   Step 2 of the explicitly-invoked TEA orchestrator, run in series
-  (/tea-scope -> /tea-model -> /tea-data). Builds a runnable economic model
+  (/tea-scope -> /tea-model -> /tea-data -> /tea-insights). Builds a runnable
+  economic model
   (model.py) from the approved starting documents, dry-runs it on quick dummy
   values, agrees the visualizations with the user, and locks it behind an
   approval gate. Invoke ONLY when the user runs /tea-model or explicitly asks to
@@ -11,7 +12,7 @@ description: >-
 
 # TEA Modeling (/tea-model)
 
-Skill 2 of three. You turn the approved `model-requirements.md` into a runnable
+Skill 2 of four. You turn the approved `model-requirements.md` into a runnable
 `model.py`, dry-run it on quick **dummy** values so the user can validate the
 model's shape and its visualizations before any real data exists, then lock it
 behind the `model_approved` gate and hand off to `/tea-data`. Full contract:

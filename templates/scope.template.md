@@ -63,31 +63,29 @@ Examples: `kg Ti-6Al-4V billet`, `1M tokens served`, `delivery`.
 
 ## 6. Entity Decomposition
 
-List the parts of the system that need their own data rows. These become
-entities in `tea-schema.json`.
+A TEA is **one or more connected unit processes (entities)**, each with **inputs**,
+**outputs**, and optionally **waste streams**. A simple system may be a **single
+entity** — that is fine. An entity can be one process step *or* a phase of the
+process that bundles many unit operations; pick the granularity that matches the
+decision and the data you can get. These rows become entities in `tea-schema.json`.
 
-| entity id | name | output | description | connects to |
-|---|---|---|---|---|
-|  |  |  |  |  |
+For each entity, name what flows **in** (feedstocks, energy, services), what flows
+**out** (the product/intermediate it hands to the next entity), any **waste
+streams** (and whether they carry a disposal cost), and the **key parameters** that
+live on it (the variables the model needs for this unit). The primary output maps to
+the schema `output`; parameters map to per-entity cells.
 
-Notes on flows, dependencies, or ordering:
+| entity id | name | inputs | outputs | waste streams | key parameters | connects to |
+|---|---|---|---|---|---|---|
+|  |  |  |  | (or "none") |  |  |
+
+Notes on flows, dependencies, ordering, or per-entity descriptions:
 
 ### Process flow
 
-A one-glance picture of the process being modeled: one node per process unit /
-entity, edges for the flows between them (mirror the `connects to` column), and the
-**key data each unit needs** listed inside its node. Authored as a Mermaid
-`flowchart` so it renders inline in this markdown and stays editable as text.
-Replace the example below; keep node labels in plain analyst vocabulary.
-
-```mermaid
-flowchart LR
-    A["Feed prep<br/><i>feedstock price, prep energy</i>"] --> B["Reactor<br/><i>yield, residence time, CapEx</i>"]
-    B --> C["Separation<br/><i>recovery fraction, electricity</i>"]
-    C --> D["Finishing<br/><i>labor rate, packaging cost</i>"]
-    REF["REF (shared)<br/><i>electricity price, loaded labor rate</i>"] -.-> B
-    REF -.-> C
-```
+The one-glance diagram of how these entities connect lives in its own
+**`process-flow.md`** (see `templates/process-flow.template.md`), authored from this
+decomposition and linked here so the picture and the table stay in sync.
 
 ## 7. Scope Frame By Entity
 

@@ -121,9 +121,9 @@ class SearchCandidateValidationTests(unittest.TestCase):
             validate_search_doc(doc, schema, satisfied_cells=[("1A", "electricity")])
         self.assertIn("satisfied shared inputs must be skipped", str(ctx.exception))
 
-    def test_gap_fill_requires_first_class_coverage_from_config(self):
+    def test_gap_fill_requires_search_targetable_coverage_from_config(self):
         schema = load_schema(TI_SCHEMA)
-        second_class_only = {
+        non_targetable_only = {
             "schema_tea_id": schema.tea_id,
             "entity": "1A",
             "candidates": [
@@ -132,15 +132,15 @@ class SearchCandidateValidationTests(unittest.TestCase):
         }
         with self.assertRaises(SearchValidationError) as ctx:
             validate_search_doc(
-                second_class_only,
+                non_targetable_only,
                 schema,
                 mode="gap",
                 entity_id="1A",
                 uncovered_parameters=["feedstock_quantity"],
             )
-        self.assertIn("first_class", str(ctx.exception))
+        self.assertIn("search_targetable", str(ctx.exception))
 
-        first_class_doc = {
+        search_targetable_doc = {
             "schema_tea_id": schema.tea_id,
             "entity": "1A",
             "candidates": [
@@ -150,7 +150,7 @@ class SearchCandidateValidationTests(unittest.TestCase):
         self.assertEqual(
             len(
                 validate_search_doc(
-                    first_class_doc,
+                    search_targetable_doc,
                     schema,
                     mode="gap",
                     entity_id="1A",

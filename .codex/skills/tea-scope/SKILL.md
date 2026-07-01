@@ -1,6 +1,6 @@
 ---
 name: tea-scope
-description: Step 1 of the explicitly-invoked TEA orchestrator, running in sequence from tea-scope to tea-model to tea-data. Use when Codex needs to start or resume TEA scoping from a rough idea and supplied materials, produce approved starting documents, and stop before model building.
+description: Step 1 of the explicitly-invoked TEA orchestrator, running in sequence from tea-scope to tea-model to tea-data to tea-insights. Use when Codex needs to start or resume TEA scoping from a rough idea and supplied materials, produce approved starting documents, and stop before model building.
 ---
 
 # TEA Scoping

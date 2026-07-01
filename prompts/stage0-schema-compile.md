@@ -101,7 +101,7 @@ Authoritative shape is that file; this is the working reference (plan.md §4):
   "parameters": [
     { "id": "...", "label": "...", "rule_type": "MONETARY|INTENSITY|FRACTION|RATE|CAPEX|PASSTHROUGH",
       "applies_to": "all" | ["1A","1B"],
-      "first_class": true, "context_free": false, "reference_value": false,
+      "search_targetable": true, "context_free": false, "reference_value": false,
       "numerator_units": "...", "per": "functional_unit|entity_output",
       "units": "...", "canonical_unit": "...", "basis": "...", "market_basis": "...",
       "capex_form": "...", "scope": "global|entity" }
@@ -187,7 +187,7 @@ with no special code. The only special treatment is downstream — **`model.py` 
 every `BENCHMARK` cell as a model input** and instead surfaces it beside the
 matching computed output. (Caveat to carry forward: because benchmark cells are
 finalized like any other, a benchmark with no findable source will be *estimated* by
-the ladder and tagged `E`/`U`; `/tea-data` must flag such a benchmark as
+the ladder and tagged `E`/`U`; `/tea-insights` must flag such a benchmark as
 estimated-not-literature so it is never mistaken for an independent check.)
 
 ### Scope frames (relevance gate, D7)

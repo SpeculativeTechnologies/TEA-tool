@@ -63,13 +63,13 @@
   "parameters": [
     {
       "id": "monthly_cost", "label": "Monthly cost", "rule_type": "MONETARY",
-      "applies_to": "all", "first_class": true, "units": "USD/month",
+      "applies_to": "all", "search_targetable": true, "units": "USD/month",
       "description": "Amortized monthly cost for the cost center (capital carried as monthly amortization — no separate CAPEX line)."
     },
     {
       "id": "power_draw", "label": "Power draw", "rule_type": "INTENSITY",
       "numerator_units": "kWh", "per": "functional_unit",
-      "applies_to": ["compute_hardware", "power_cooling"], "first_class": true
+      "applies_to": ["compute_hardware", "power_cooling"], "search_targetable": true
     },
     {
       "id": "throughput", "label": "Throughput", "rule_type": "RATE",

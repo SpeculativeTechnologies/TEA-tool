@@ -45,14 +45,20 @@ INPUTS = (
     "power,cost_per_fu,0.45\n"
 )
 
+COMPARISON_INPUTS = (
+    "option,entity,parameter,value\n"
+    "option_a,compute,cost_per_fu,1.20\n"
+    "option_b,power,cost_per_fu,0.45\n"
+)
+
 
 @unittest.skipUnless(HAVE_OPENPYXL, "openpyxl not installed")
 class ExportWorkbookTests(unittest.TestCase):
-    def _build(self, tag="DUMMY"):
+    def _build(self, tag="DUMMY", inputs_text=INPUTS):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: __import__("shutil").rmtree(tmp, ignore_errors=True))
         inputs = tmp / "inputs.csv"
-        inputs.write_text(INPUTS, encoding="utf-8")
+        inputs.write_text(inputs_text, encoding="utf-8")
         results = dict(RESULTS, tag=tag)
         results_path = tmp / "model-results.json"
         results_path.write_text(json.dumps(results), encoding="utf-8")
@@ -115,6 +121,19 @@ class ExportWorkbookTests(unittest.TestCase):
         data_cell = ws.cell(row=header_row + 1, column=value_col)
         self.assertEqual(data_cell.value, 1.20)
         self.assertEqual((data_cell.fill.fgColor.rgb or "")[-6:], export_workbook.GREY_INPUT)
+
+    def test_main_input_option_column_when_present(self):
+        out, _ = self._build(inputs_text=COMPARISON_INPUTS)
+        wb = openpyxl.load_workbook(out)
+        ws = wb["Main Input"]
+        header_row = next(
+            r[0].row for r in ws.iter_rows()
+            if any(c.value == "Option" for c in r)
+        )
+        headers = [c.value for c in ws[header_row]]
+        self.assertIn("Option", headers)
+        option_col = headers.index("Option") + 1
+        self.assertEqual(ws.cell(row=header_row + 1, column=option_col).value, "option_a")
 
 
 if __name__ == "__main__":

@@ -143,7 +143,7 @@ def _parameter_entry(schema: Schema, parameter_id: str) -> dict[str, object]:
         "basis",
         "market_basis",
         "capex_form",
-        "first_class",
+        "search_targetable",
         "context_free",
         "reference_value",
         "scope",

@@ -1,0 +1,7 @@
+interface:
+  display_name: "TEA Insights"
+  short_description: "Run the TEA model and explore the results"
+  default_prompt: "Use $tea-insights to run the approved TEA model on the finalized inputs, present the results, and suggest new plots."
+
+policy:
+  allow_implicit_invocation: false

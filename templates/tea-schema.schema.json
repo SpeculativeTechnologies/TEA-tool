@@ -216,8 +216,8 @@
             }
           ]
         },
-        "first_class": {
-          "description": "True if this parameter justifies a source on its own (eligible for gap-fill targeting).",
+        "search_targetable": {
+          "description": "True if this parameter justifies a dedicated source search on its own (eligible for gap-fill targeting). Renamed from the legacy 'first_class' key.",
           "type": "boolean"
         },
         "context_free": {

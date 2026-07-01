@@ -325,7 +325,7 @@ def validate_search_doc(
     """Validate and return normalized candidates from a search JSON artifact.
 
     ``mode`` is ``"master"`` or ``"gap"``. Gap mode adds the per-entity,
-    URL-only, duplicate, uncovered-parameter, and first-class eligibility checks
+    URL-only, duplicate, uncovered-parameter, and search-targetable eligibility checks
     required by T3.
     """
 
@@ -452,10 +452,10 @@ def validate_search_doc(
                     f"{where}: duplicate approved source_key {candidate.source_key!r}; "
                     "retargeting must use a new key and set is_retargeting_of_master_list_source"
                 )
-            if non_ref_parameters and not any(schema.is_first_class(p) for p in non_ref_parameters):
+            if non_ref_parameters and not any(schema.is_search_targetable(p) for p in non_ref_parameters):
                 errors.append(
                     f"{where}: gap-fill candidates must cover at least one "
-                    "first_class parameter from the schema"
+                    "search_targetable parameter from the schema"
                 )
             if reference_parameters and not all(
                 schema.is_reference_value(p) and schema.is_context_free(p)

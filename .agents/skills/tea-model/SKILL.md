@@ -1,8 +1,8 @@
 # TEA Modeling (Codex / neutral entry point)
 
 This is the Codex/OpenAI registration of the **tea-model** skill — Step 2 of the
-three-skill TEA orchestrator, run in series (`/tea-scope` → `/tea-model` →
-`/tea-data`). Explicitly invoked only (see `agents/openai.yaml`:
+four-skill TEA orchestrator, run in series (`/tea-scope` → `/tea-model` →
+`/tea-data` → `/tea-insights`). Explicitly invoked only (see `agents/openai.yaml`:
 `allow_implicit_invocation: false`) — never self-trigger on general TEA questions.
 
 The full, platform-neutral instructions and references are shared with the Claude
@@ -17,7 +17,7 @@ Code layout and are the single source of truth. Load them from the repo root:
 
 ## Operating contract (summary — read the shared SKILL.md for the rest)
 
-- Step 2 of 3. Turn the approved `model-requirements.md` into a runnable
+- Step 2 of 4. Turn the approved `model-requirements.md` into a runnable
   `runs/<project>/model.py`, dry-run it on quick **dummy** values, agree the
   visualizations with the user, lock it behind the `model_approved` gate, then hand
   off to `/tea-data`.
@@ -25,12 +25,12 @@ Code layout and are the single source of truth. Load them from the repo root:
   send the user to `/tea-scope`.
 - `model.py` is a **pure function of its `--inputs` CSV** (reads `(entity,
   parameter)` values), writes one figure per chosen chart to `--outdir`, and emits
-  a results JSON. No hard-coded numbers, no network, no randomness — so `/tea-data`
+  a results JSON. No hard-coded numbers, no network, no randomness — so `/tea-insights`
   re-runs the same file on real data.
 - Dummy values are quick, rough, order-of-magnitude, from your own knowledge —
   **no web search**.
 - Dry-run figures + workbook go to dummy-tagged paths (`plots-dummy/`,
-  `<project>-model-workbook-DUMMY.xlsx`) so `/tea-data`'s real run never overwrites
+  `<project>-model-workbook-DUMMY.xlsx`) so `/tea-insights`'s real run never overwrites
   them. Every run also emits a values-only Excel workbook via
   `scripts/export_workbook.py` (main input, dashboard, intermediate outputs,
   charts) for spreadsheet users.

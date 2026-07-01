@@ -41,7 +41,7 @@ The analyst provides:
   `schema.defaults.gap_fill_candidate_cap`; if absent, use 5.
 
 Use the schema as the only source of truth for parameter ids, applicability,
-`first_class`, `reference_value`, `context_free`, units, and market basis.
+`search_targetable`, `reference_value`, `context_free`, units, and market basis.
 
 If `execution_mode` is `auto`, this is an open-access-only search. Search
 specifically for publicly inspectable full text, tables, datasets, repository
@@ -56,9 +56,9 @@ catalog record, or paywalled landing page is visible.
 For normal entity coverage:
 
 - Every candidate must cover at least one uncovered parameter where
-  `first_class: true` in the schema.
-- A candidate may also list non-first-class uncovered parameters when the same
-  source is expected to cover them, but a non-first-class parameter alone is not
+  `search_targetable: true` in the schema.
+- A candidate may also list non-search-targetable uncovered parameters when the same
+  source is expected to cover them, but a non-search-targetable parameter alone is not
   enough to spend a candidate slot.
 - Do not list parameters outside `{{uncovered_parameters}}`.
 - Do not list a cell included in `{{satisfied_cells}}`; shared inputs are
@@ -131,7 +131,7 @@ Return a single JSON object and no prose:
       "field_coverage": [
         {
           "entity": "{{entity}}",
-          "parameters": ["first_class_uncovered_parameter_id"]
+          "parameters": ["search_targetable_uncovered_parameter_id"]
         }
       ],
       "rationale": "1-3 sentences explaining why this fills the gap and what boundary caveats remain",
@@ -151,7 +151,7 @@ Return a single JSON object and no prose:
 ## Constraints
 
 - Emit at most `{{candidate_cap}}` candidates.
-- Each normal candidate must cover at least one schema `first_class` parameter
+- Each normal candidate must cover at least one schema `search_targetable` parameter
   from `{{uncovered_parameters}}`.
 - `field_coverage[].entity` must be `{{entity}}` or `REF`.
 - `field_coverage[].parameters` must contain only schema-valid parameter ids for

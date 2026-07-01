@@ -87,7 +87,7 @@ def _parameter_descriptor(schema: Schema, parameter_id: str) -> dict[str, object
         "id": parameter_id,
         "label": parameter.get("label", parameter_id),
         "rule_type": parameter["rule_type"],
-        "first_class": bool(parameter.get("first_class")),
+        "search_targetable": bool(parameter.get("search_targetable")),
         "context_free": bool(parameter.get("context_free")),
         "reference_value": bool(parameter.get("reference_value")),
     }

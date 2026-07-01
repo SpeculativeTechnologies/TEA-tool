@@ -64,6 +64,7 @@ CENTER = Alignment(horizontal="center", vertical="center")
 META_KEYS = {"tag", "inputs_path", "plots"}
 
 # Input-CSV column aliases (mirror model.py's load_inputs so the same files work).
+OPTION_KEYS = ("option", "option_id")
 ENTITY_KEYS = ("entity", "unit")
 PARAM_KEYS = ("parameter", "field")
 VALUE_KEYS = ("value", "normalized_value", "capex_usd")
@@ -264,6 +265,7 @@ def build_main_input(wb, *, inputs_path, is_dummy):
 
     rows = _read_input_rows(inputs_path)
     cols = [
+        ("Option", OPTION_KEYS, False),
         ("Entity", ENTITY_KEYS, False),
         ("Parameter", PARAM_KEYS, False),
         ("Value", VALUE_KEYS, True),       # shaded grey = the editable input

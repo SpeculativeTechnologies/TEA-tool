@@ -13,10 +13,11 @@ and final artifacts.
 
 New users do not have to drive these stages by hand. The `/tea-data` skill
 (`.claude/skills/tea-data/`) drives this workflow for them — after `/tea-scope`
-has written the three starting documents and `/tea-model` has built the model. It
-owns durable run state and an issue ledger through `scripts/orchestrator.py` and
-routes the phases below, then runs the approved model on the finalized inputs.
-This guide remains the execution authority the skill follows.
+has written the starting documents and `/tea-model` has built the model. It owns
+durable run state and an issue ledger through `scripts/orchestrator.py` and routes
+the phases below to a finalized, gap-free input set; `/tea-insights` then runs the
+approved model on those inputs and explores the results. This guide remains the
+execution authority the skill follows.
 
 ## Phase 0 - Setup
 
@@ -180,7 +181,7 @@ $RUN/search-history/gap-fill-ENTITY.json
 
 Review each gap-fill candidate:
 
-- Does it cover at least one uncovered first-class parameter?
+- Does it cover at least one uncovered search-targetable parameter?
 - Is `source_url` a real HTTP(S) source page?
 - Is it non-duplicative, or intentionally retargeted with a new `source_key`?
 - Does `field_coverage` list only the target entity or `REF`?
@@ -440,7 +441,11 @@ must contain exactly one finite numeric model value (`normalized_value` or
 final hand-off). The Auto review compiles AI gate reasoning, assumptions,
 estimates, flags, and technical errors for later review.
 
-Stop here. The analyst runs their own model outside this workflow.
+This is the end of the data pipeline: finalized, gap-free inputs. In the
+orchestrator skills, `/tea-data` records the `inputs_finalized` gate here and hands
+off to `/tea-insights`, which runs the approved model on these inputs and explores
+the results. (Running the pipeline by hand, an analyst can instead feed
+`final/Main Input.csv` to their own model.)
 
 ### 7.2 Finalize Comparison Project
 

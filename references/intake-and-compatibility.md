@@ -1,7 +1,7 @@
 # Intake and compatibility
 
 Detailed contract for the mandatory intake and approval flow of `/tea-scope`
-(Skill 1 of three). The skill body gives the sequence; this is the substance.
+(Skill 1 of four). The skill body gives the sequence; this is the substance.
 Keep schemas, files, and CSVs invisible to the user — derive what you can, and
 resolve ambiguity by asking from your own knowledge rather than researching.
 
@@ -78,6 +78,14 @@ relentless design interview.
   results should be validated against** (ask so "none" is a conscious choice, not
   an oversight). Capture only the metric and unit — **never a benchmark value from
   your own memory**; `/tea-data` researches the values with citations.
+- **Walk the entities explicitly.** A TEA is one or more connected unit processes
+  (entities), each with inputs, outputs, and optionally waste streams; a
+  single-entity system is fine, and an entity may be one step or a phase bundling
+  many unit operations. Decompose the system into entities, then for **each entity**
+  confirm: what flows **in**, what flows **out**, any **waste stream** (and whether
+  it carries a disposal cost), what it **connects to**, and the **key parameters** it
+  needs. This is what lets a non-expert see what each unit contributes before
+  approving.
 
 ## Step 3 — Inspect and classify supplied values
 
@@ -149,8 +157,8 @@ Record the summary in `intake-summary.md`.
 
 ## Step 6 — Generate the starting documents
 
-You write `scope.md`, `data-requirements.md`, and `model-requirements.md` (never
-the user). `model-requirements.md` (template:
+You write `scope.md`, `process-flow.md`, `data-requirements.md`, and
+`model-requirements.md` (never the user). `model-requirements.md` (template:
 `templates/model-requirements.template.md`) records desired outputs and units,
 the functional-unit relationship, inputs required by each output, supplied vs.
 still-needed inputs, intended formulas when known, scenario/comparison
@@ -163,15 +171,22 @@ project-level `model-requirements.md`; option folders hold option-specific
 Two communication artifacts the docs must carry so a non-expert can actually
 *understand* their model — not just approve a black box:
 
-- **Process flow chart in `scope.md`.** A Mermaid `flowchart` (the template's
-  "Process flow" section) with one node per process unit/entity, edges for the
-  flows between them, and the key data each unit needs annotated on its node. Build
-  it from the entity decomposition; keep node labels in the user's plain vocabulary.
+- **Process flow diagram in its own `process-flow.md`.** A Mermaid `flowchart`
+  (template: `templates/process-flow.template.md`) with one node per entity, edges
+  for the flows between them, and each node annotated with what flows **in**, what
+  flows **out**, any **waste stream**, and the key data the unit needs. Build it from
+  the entity decomposition; keep node labels in the user's plain vocabulary. It lives
+  in its own file (linked from `scope.md` §6), and is approved and snapshotted with
+  the other docs.
 - **"How the model is solved" in `model-requirements.md`.** A plain-language
-  walkthrough of the solve order plus **one worked subcomponent example** carried
-  end to end (see the template section). Prefer a user-supplied fixed value;
-  otherwise use clearly-labeled illustrative numbers — the example demonstrates the
-  *mechanics*, and must not assert any researched value (benchmarks included).
+  walkthrough that **walks the actual entity graph** — inputs → each entity's
+  contribution → aggregation across connected entities → functional-unit
+  normalization → the headline number (e.g. $/kg, $/area) — plus **one worked
+  example that carries a representative input all the way through to that headline
+  number** (see the template section), not an isolated line item. Prefer a
+  user-supplied fixed value; otherwise use clearly-labeled illustrative numbers — the
+  example demonstrates the *mechanics*, and must not assert any researched value
+  (benchmarks included).
 
 Compile the schema per option with `prompts/stage0-schema-compile.md`. The schema
 is **numeric-only**: every cell ends with one finite numeric value; JSON/TEXT
@@ -183,13 +198,15 @@ documents, not in cells.
 Run the schema/compatibility reviewer subagent; correct mechanical problems
 before the gate. Show a concise document summary, assumptions and exclusions,
 required input categories, extracted user-value counts and uncertain
-interpretations, fixed inputs, and links to the full documents and
-`user-inputs.csv`. **Echo, in the approval message itself, the "how the model is
-solved" walkthrough and the worked subcomponent example** (condensed) so the user
+interpretations, fixed inputs, **the process-flow diagram called out and linked**,
+and links to the full documents and `user-inputs.csv`. **Echo, in the approval
+message itself, the "how the model is solved" walkthrough and the full-path worked
+example** (condensed), and **show or link the process-flow diagram**, so the user
 understands how their model will be computed before they sign off — the chat
 message is where the decision happens, so it must not be a black box. Require
-explicit approval of all three documents. On approval:
-`approve --type starting_documents` (hashes the three documents) and
+explicit approval of all four documents. On approval:
+`approve --type starting_documents` (hashes `scope.md`, `process-flow.md`,
+`data-requirements.md`, `model-requirements.md`) and
 `snapshot --label starting-documents`, then direct the user to run `/tea-model`.
 
 ## Default completeness checklist
@@ -202,6 +219,8 @@ allow overrides unless they break a hard schema/pipeline contract:
 - System boundary.
 - Functional unit.
 - Geography, time, currency, and cost basis.
+- Entity decomposition: the connected unit processes, and for each its inputs,
+  outputs, optional waste streams, key parameters, and what it connects to.
 - Desired model outputs.
 - Available documents and values.
 - Known constraints.

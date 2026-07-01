@@ -4,7 +4,7 @@
 This is a per-run template. `/tea-model` copies it to `runs/<project>/model.py`
 and fills in `compute()`, `headline_metric()`, and `render()` from the project's
 `model-requirements.md`. Keep these rules — `scripts/check_model.py` enforces
-them and `/tea-data` re-runs this exact file on real data:
+them and `/tea-insights` re-runs this exact file on real data:
 
 - **Pure function of the input CSV.** Every number comes from `--inputs`; never
   hard-code a model value here. Swapping the input CSV (dummy -> real) and
@@ -130,23 +130,26 @@ def headline_metric(inputs: dict) -> float:
     return compute(inputs)["headline"].get("total_cost_per_fu", float("nan"))
 
 
-def tornado(inputs: dict, pct: float = 0.2) -> tuple[float, list[tuple[str, str, float]]]:
+def tornado(inputs: dict, pct: float = 0.2) -> tuple[float, list[tuple[str, float, float]]]:
     """One-at-a-time +/- pct swing of each input on the headline metric.
 
     Self-contained sensitivity: re-runs `compute()` with one cell perturbed at a
     time. This is why the model must be a pure function of `inputs`.
+
+    One row per input: (label, low_value, high_value). Render as a single bar per
+    input spanning low->high across a base line (see examples/compute-service),
+    not as separate rows for the low and high cases.
     """
 
     base = headline_metric(inputs)
-    swings: list[tuple[str, str, float]] = []
+    swings: list[tuple[str, float, float]] = []
     for key, value in inputs.items():
         low = dict(inputs)
         low[key] = value * (1 - pct)
         high = dict(inputs)
         high[key] = value * (1 + pct)
         label = f"{key[0]}.{key[1]}"
-        swings.append((label, "low", headline_metric(low)))
-        swings.append((label, "high", headline_metric(high)))
+        swings.append((label, headline_metric(low), headline_metric(high)))
     return base, swings
 
 

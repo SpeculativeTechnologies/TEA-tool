@@ -18,11 +18,11 @@ runs/<project>/
   model/dummy-inputs.csv    # quick dummy values for the dry run (/tea-model)
   viz-spec.md               # chosen visualizations (approved + hashed; /tea-model)
   plots-dummy/              # dummy figures from the dry run (/tea-model); kept, not overwritten
-  plots/                    # real rendered figures (/tea-data)
+  plots/                    # real rendered figures (/tea-insights)
   model-results-DUMMY.json  # dummy-run outputs (/tea-model)
-  model-results.json        # real-run headline outputs (/tea-data)
+  model-results.json        # real-run headline outputs (/tea-insights)
   <project>-model-workbook-DUMMY.xlsx  # values-only Excel view of the dummy run (/tea-model)
-  <project>-model-workbook.xlsx        # values-only Excel view of the real run (/tea-data)
+  <project>-model-workbook.xlsx        # values-only Excel view of the real run (/tea-insights)
   user-inputs.csv           # analyst values mapped to schema cells
   user-sources.csv          # analyst/source registry (source_role may be analyst)
   provided-materials.json   # registered supplied materials
@@ -44,10 +44,12 @@ model_build → model_review → evidence_collection → extraction →
 normalization_and_selection → completeness_review → estimation → finalization → complete
 ```
 
-The three skills own contiguous slices: `/tea-scope` runs `intake` …
+The four skills own contiguous slices: `/tea-scope` runs `intake` …
 `starting_documents_review`; `/tea-model` runs `schema_setup` … `model_review`;
-`/tea-data` runs `evidence_collection` … `complete`. Each skill refuses to start
-until the prior skill's gate approval is recorded and valid (see below).
+`/tea-data` runs `evidence_collection` … `finalization` (stopping at the finalized
+inputs); `/tea-insights` runs the approved model on those inputs and advances
+`finalization` → `complete`. Each skill refuses to start until the prior skill's
+gate approval is recorded and valid (see below).
 
 ## Issue ledger
 
@@ -83,12 +85,14 @@ python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
     --artifact model.py --artifact viz-spec.md
 ```
 
-The two starting gates are `starting_documents` (end of `/tea-scope`) and
-`model_approved` (end of `/tea-model`). A skill gate-checks the prior approval via
-`status` → `approvals.valid` and refuses to proceed if it is absent. If an
+The gate approvals are `starting_documents` (end of `/tea-scope`), `model_approved`
+(end of `/tea-model`), and `inputs_finalized` (end of `/tea-data`, recorded over
+`final/Main Input.csv` + `final/run-manifest.md`). `/tea-insights` gate-checks both
+`model_approved` and `inputs_finalized`. A skill gate-checks the prior approval(s)
+via `status` → `approvals.valid` and refuses to proceed if any is absent. If an
 approved file changes outside the orchestrator, `status`/`validate-resume` report
 the approval as invalid (changed/missing artifacts) and it drops out of
-`approvals.valid`. A light inline `model.py` fix in `/tea-data` therefore
+`approvals.valid`. A light inline `model.py` fix in `/tea-insights` therefore
 invalidates `model_approved` until you re-`approve` it (refreshing the hash) —
 this is how the model never silently drifts from its approved state.
 
@@ -104,7 +108,7 @@ python scripts/orchestrator.py snapshot --run-dir RUN --label starting-documents
 ```
 
 → `history/<timestamp>-starting-documents/`. Other labels: `model-approved`,
-`scope-amendment`.
+`inputs-finalized`, `scope-amendment`.
 
 ## Resume behavior
 
@@ -145,7 +149,7 @@ action.
 | `set-stage` | Advance or rewind the workflow stage |
 | `set-mode` | Set + optionally lock the execution mode (at `/tea-data` start) |
 | `issue add/resolve/list` | Maintain the issue ledger + counters |
-| `approve` | Record an approval with artifact hashes (`starting_documents`, `model_approved`) |
+| `approve` | Record an approval with artifact hashes (`starting_documents`, `model_approved`, `inputs_finalized`) |
 | `snapshot` | Snapshot artifacts into `history/` |
 | `register-material` | Register a supplied material (copy or reference) |
 | `materialize-user-inputs` | Validate + materialize analyst inputs into Audit/Sources |

@@ -2,19 +2,21 @@
 name: tea-data
 description: >-
   Step 3 of the explicitly-invoked TEA orchestrator, run in series
-  (/tea-scope -> /tea-model -> /tea-data). Gathers real, citation-backed evidence
-  (auto or guided), populates the approved model's inputs, then runs the model to
-  produce real-data charts and results. Invoke ONLY when the user runs /tea-data
-  or explicitly asks to gather data / run the model after the model is approved.
-  Do not self-invoke for general TEA questions.
+  (/tea-scope -> /tea-model -> /tea-data -> /tea-insights). Gathers real,
+  citation-backed evidence (auto or guided), populates the approved model's
+  inputs, and finalizes the gap-free input set, then hands off to /tea-insights to
+  run the model. Invoke ONLY when the user runs /tea-data or explicitly asks to
+  gather data / finalize inputs after the model is approved. Do not self-invoke for
+  general TEA questions.
 ---
 
-# TEA Data Acquisition + Run (/tea-data)
+# TEA Data Acquisition (/tea-data)
 
-Skill 3 of three. You gather the real, citation-backed evidence, populate the
-inputs, then **inject them into the already-approved `model.py` and run it** to
-produce the final charts and results. Execution contract:
-`references/interaction-and-gates.md`; pipeline authority: `workflow.md`.
+Skill 3 of four. You gather the real, citation-backed evidence and populate the
+inputs, then **finalize the gap-free input set and hand off to `/tea-insights`**,
+which runs the already-approved `model.py` to produce the charts and results.
+Execution contract: `references/interaction-and-gates.md`; pipeline authority:
+`workflow.md`.
 
 Plain language; keep schemas, files, and CSVs invisible.
 
@@ -29,7 +31,9 @@ The CLI is the source of truth; never hand-edit state or CSVs. Run
 
 - If `model_approved` is **not** in `approvals.valid`, stop and tell the user to
   run `/tea-model` first (or resume it).
-- If the run is already `complete`, summarize the results and the run's `plots/`.
+- If `inputs_finalized` is already in `approvals.valid` (or the run is
+  `complete`), data acquisition is **done** — point the user to `/tea-insights` to
+  run the model and explore the results.
 - Otherwise resume or begin acquisition.
 
 ## 1. Choose the mode (only here)
@@ -65,34 +69,31 @@ gates and consequential decisions (Guided) per
 with `scripts/finalize_inputs.py` (and `scripts/finalize_comparison.py` for
 comparisons), which enforces exactly one finite numeric value per cell.
 
-## 3. Run the model + present results
+## 3. Finalize + hand off to /tea-insights
 
-After finalization produces the real, fully-populated `Main Input.csv`, run the
-approved model on it and present the deliverable:
+Finalization (`workflow.md` Phase 7) runs the mandatory `tea-quality-reviewer`
+pass and `scripts/finalize_inputs.py` (and `scripts/finalize_comparison.py` for
+comparisons), producing the real, gap-free `final/Main Input.csv`. Once that
+succeeds, record the data hand-off gate and snapshot it:
 
 ```
-python "$RUN/model.py" --inputs "$RUN/Main Input.csv" \
-    --outdir "$RUN/plots" --results "$RUN/model-results.json"
-python scripts/export_workbook.py --run-dir "$RUN"
+python scripts/orchestrator.py approve --run-dir RUN --type inputs_finalized \
+    --artifact "final/Main Input.csv" --artifact "final/run-manifest.md"
+python scripts/orchestrator.py snapshot --run-dir RUN --label inputs-finalized \
+    --artifact "final/Main Input.csv" --artifact "final/run-manifest.md"
 ```
 
-The real run writes to `plots/` and `model-results.json`; the dummy figures from
-`/tea-model` stay in `plots-dummy/` (they are **not** overwritten). The workbook
-step writes the viewer-friendly `<project>-model-workbook.xlsx` — a values-only
-spreadsheet (no formulas) with the main input, a dashboard, the intermediate
-outputs, and the charts, for people who prefer Excel to code. Present the **real**
-plots, the headline metric(s), the charts, the workbook, and the key
-sources/assumptions. **If the run has benchmarks, present the validation comparison
-explicitly** — computed value vs. researched literature benchmark (with its source)
-for each target, from `results["validation"]`. Flag any benchmark cell that ended
-up **estimated rather than literature-sourced** (quality tag `E`/`U`): an estimated
-benchmark is not an independent check, so call it out so the user does not read it
-as one. Then `set-stage --stage complete`.
+For a comparison project, gate on the comparison outputs instead
+(`--artifact "final/option-summary.csv" --artifact "final/comparison-manifest.md"`).
 
-**Show where the data lives (both modes, especially Auto).** The final chat
-message must not be a black box. After the results, list and **link** the key
-audit-trail files, each with a one-line "what's in here", so the user can drill
-into any number. Cover at least:
+Leave the stage at `finalization` — **do not run the model and do not set
+`complete`** (those belong to `/tea-insights`). Then present a plain-language
+**data** summary and **stop, telling the user to run `/tea-insights`** to run the
+model and explore the results.
+
+**Show where the data lives (both modes, especially Auto).** The hand-off message
+must not be a black box. List and **link** the key audit-trail files, each with a
+one-line "what's in here", so the user can drill into any number. Cover at least:
 
 - `final/Main Input.csv` — the model inputs, one row per cell (value, units, tag).
 - `Sources.csv` — every source with its URL and page/table reference.
@@ -100,29 +101,14 @@ into any number. Cover at least:
   one won each cell, and why.
 - `final/run-manifest.md` — coverage, quality distribution, and the **Unbacked
   Estimates (U)** list.
-- `plots/` and `model-results.json` — the charts and the headline numbers.
 - In Auto mode: `auto-run-log.md` and `final/auto-review.md` — the AI's gate
   decisions, assumptions, and estimate reasoning.
 
-Call out, in plain language and up front, anything the user should double-check:
-every **`U` (unbacked) estimate** cell, and any source slice recorded as
-**skipped-with-reason** (e.g. an unreadable PDF). Get the skipped list from
-`orchestrator.py verify-spawns` / the run's `subagent_jobs`; get the `U` cells
-from `final/run-manifest.md`.
-
-**Light inline model fixes.** If real data exposes a small model problem (a wrong
-formula, an obviously broken chart), you may edit `runs/<project>/model.py`
-directly — but that invalidates `model_approved`, so immediately re-record it and
-note why in `decision-log.md`:
-
-```
-python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
-    --artifact model.py --artifact viz-spec.md
-```
-
-A structural change (new output, changed functional unit, a different chart set)
-is **not** a light fix — send the user back to `/tea-model` to revise and
-re-approve the model.
+Call out, in plain language and up front, anything the user should double-check
+before `/tea-insights` turns these inputs into charts: every **`U` (unbacked)
+estimate** cell, and any source slice recorded as **skipped-with-reason** (e.g. an
+unreadable PDF). Get the skipped list from `orchestrator.py verify-spawns` / the
+run's `subagent_jobs`; get the `U` cells from `final/run-manifest.md`.
 
 ## Subagents
 

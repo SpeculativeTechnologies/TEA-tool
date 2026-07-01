@@ -5,7 +5,7 @@ Worked example of the /tea-model output: a bespoke, runnable model that is a pur
 function of its `--inputs` CSV (reads (entity, parameter) values), writes one
 figure per chosen visualization to `--outdir`, and emits a results JSON. The same
 file runs on the quick dummy CSV (/tea-model) and on the pipeline's real
-Main Input.csv (/tea-data).
+Main Input.csv (/tea-insights).
 
     python model.py [--inputs CSV] [--outdir DIR] [--results JSON] [--tag TEXT]
 """

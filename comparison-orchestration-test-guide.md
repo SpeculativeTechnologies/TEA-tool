@@ -502,7 +502,7 @@ Next if approved: build extraction manifests and extract values.
 
 ### Phase 2: Gap-Fill Search
 
-Only run this if Phase 1 leaves important first-class cells uncovered. Report:
+Only run this if Phase 1 leaves important search-targetable cells uncovered. Report:
 
 ```text
 Stage: Phase 2 gap-fill decision

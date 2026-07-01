@@ -1,7 +1,7 @@
 interface:
   display_name: "TEA Data"
-  short_description: "Gather TEA evidence and run the model"
-  default_prompt: "Use $tea-data to gather evidence, populate the approved TEA model, and run the final analysis."
+  short_description: "Gather TEA evidence and finalize the inputs"
+  default_prompt: "Use $tea-data to gather citation-backed evidence and finalize the gap-free TEA model inputs, then hand off to tea-insights."
 
 policy:
   allow_implicit_invocation: false

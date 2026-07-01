@@ -118,7 +118,7 @@ The structured spec Stage 0 compiles into `tea-schema.json`. Expected sections
   **scope frame** per entity (`in_scope` configuration + `known_out_of_scope`
   variants) for the relevance gate (D7).
 - **Parameter catalog** — for each parameter: id, label, **rule-type** (§5),
-  units / numerator units, basis, `first_class` (does it justify a source on
+  units / numerator units, basis, `search_targetable` (does it justify a source on
   its own), `context_free` (reference value — search without TEA context), and
   `reference_value` (global market constant vs entity cell).
 - **Applicability** — which parameters apply to which entities (default `all`,
@@ -157,10 +157,10 @@ The structured spec Stage 0 compiles into `tea-schema.json`. Expected sections
 
   "parameters": [
     { "id": "specific_capex", "label": "Specific CapEx", "rule_type": "CAPEX",
-      "applies_to": "all", "first_class": true },
+      "applies_to": "all", "search_targetable": true },
     { "id": "electricity", "label": "Electricity", "rule_type": "INTENSITY",
       "numerator_units": "kWh", "per": "entity_output",
-      "applies_to": "all", "first_class": true },
+      "applies_to": "all", "search_targetable": true },
     { "id": "Ti_yield", "label": "Ti yield", "rule_type": "FRACTION",
       "basis": "element-of-interest", "applies_to": ["1A","1B","4","5","6"] },
     // reference values = parameters with context_free + reference_value:

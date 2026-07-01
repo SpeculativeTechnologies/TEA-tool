@@ -1,6 +1,6 @@
 ---
 name: tea-model
-description: Step 2 of the explicitly-invoked TEA orchestrator, running in sequence from tea-scope to tea-model to tea-data. Use when Codex needs to turn approved TEA starting documents into a runnable model.py, dry-run it on dummy values, agree visualizations, and stop at model approval.
+description: Step 2 of the explicitly-invoked TEA orchestrator, running in sequence from tea-scope to tea-model to tea-data to tea-insights. Use when Codex needs to turn approved TEA starting documents into a runnable model.py, dry-run it on dummy values, agree visualizations, and stop at model approval.
 ---
 
 # TEA Modeling

@@ -2,9 +2,11 @@
 
 The execution contract for `/tea-data` (Skill 3): how to run `workflow.md` for a
 non-expert — when to interrupt, what a gate looks like, how sources and
-comparisons are handled, the subagent contract, and how the populated model is
-run at the end. `/tea-data` only starts once `model_approved` is recorded and
-valid (`status` → `approvals.valid`); otherwise send the user to `/tea-model`.
+comparisons are handled, the subagent contract, and how the finalized inputs are
+handed off. `/tea-data` only starts once `model_approved` is recorded and valid
+(`status` → `approvals.valid`); otherwise send the user to `/tea-model`. Running
+the populated model and exploring the results is `/tea-insights` (Skill 4) — see
+`references/insights-and-iteration.md`.
 
 ## General
 
@@ -142,46 +144,34 @@ cell under the Auto contract. `finalize_inputs.py` validates exactly one finite
 numeric model value per cell in both modes (use `--allow-gaps` only for an
 explicitly-draft intermediate manifest, never the final hand-off).
 
-## Run the model (end of /tea-data)
+## Finalize + hand off to /tea-insights
 
-After finalization produces the real, fully-populated `Main Input.csv`, run the
-already-approved model on it and present results — this run **is** the
-deliverable. See `references/model-building.md` for the model contract.
+No mode finalizes with blank cells (see the previous section). After the
+finalization quality-reviewer pass and `finalize_inputs.py` (or
+`finalize_comparison.py`) produce the real, gap-free `final/Main Input.csv`, record
+the data hand-off gate and snapshot it, then **stop**:
 
 ```
-python runs/<project>/model.py --inputs "runs/<project>/Main Input.csv" \
-    --outdir runs/<project>/plots
-python scripts/export_workbook.py --run-dir runs/<project>
+python scripts/orchestrator.py approve --run-dir RUN --type inputs_finalized \
+    --artifact "final/Main Input.csv" --artifact "final/run-manifest.md"
+python scripts/orchestrator.py snapshot --run-dir RUN --label inputs-finalized \
+    --artifact "final/Main Input.csv" --artifact "final/run-manifest.md"
 ```
 
-The real run writes `plots/` and `model-results.json`; the dummy figures from
-`/tea-model` remain in `plots-dummy/` (**not** overwritten). The workbook step
-produces `<project>-model-workbook.xlsx`, a values-only Excel view (no formulas)
-of the inputs, headline dashboard, intermediate outputs, and charts. Present the
-**real** plots, the headline metric(s), the charts, the workbook, and the key
-sources/assumptions. Then `set-stage --stage complete`.
+(For a comparison, gate on `final/option-summary.csv` +
+`final/comparison-manifest.md`.) Leave the stage at `finalization`; **do not run
+the model and do not set `complete`** — running the populated model, presenting the
+real charts, and exploring the results all belong to `/tea-insights`
+(`references/insights-and-iteration.md`). Present a plain-language **data** summary
+and tell the user to run `/tea-insights`.
 
-**Transparency in the closing message (both modes).** Fast/Auto mode especially
+**Transparency in the hand-off message (both modes).** Fast/Auto mode especially
 must not be a black box: list and link the key audit-trail files — `final/Main
 Input.csv`, `Sources.csv`, `Audit_final_consolidated.csv`, `final/run-manifest.md`,
-`plots/`, `model-results.json`, and in Auto mode `auto-run-log.md` /
-`final/auto-review.md` — each with a one-line description. Call out up front every
-unbacked **`U`** estimate cell and every source slice recorded as
-**skipped-with-reason**, so the user knows exactly what to double-check.
-
-**Light inline model fixes.** If real data exposes a small problem (a wrong
-formula, an obviously broken chart), you may edit `runs/<project>/model.py`
-directly. Editing it invalidates the `model_approved` approval, so immediately
-re-record it and note why in `decision-log.md`:
-
-```
-python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
-    --artifact model.py --artifact viz-spec.md
-```
-
-A structural change (new output, changed functional unit, a different chart set)
-is **not** a light fix — send the user back to `/tea-model` to revise and
-re-approve the model.
+and in Auto mode `auto-run-log.md` / `final/auto-review.md` — each with a one-line
+description. Call out up front every unbacked **`U`** estimate cell and every source
+slice recorded as **skipped-with-reason**, so the user knows exactly what to
+double-check before `/tea-insights` turns the inputs into charts.
 
 ## Subagent contract
 

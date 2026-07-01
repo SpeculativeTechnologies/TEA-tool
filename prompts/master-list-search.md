@@ -37,7 +37,7 @@ The analyst provides:
   `schema.defaults.master_list_candidate_cap`; if absent, use 15.
 
 Use the schema as the only source of truth for entity ids, parameter ids,
-applicability, `first_class`, `reference_value`, `context_free`, units, market
+applicability, `search_targetable`, `reference_value`, `context_free`, units, market
 basis, and display vocabulary.
 
 If `execution_mode` is `auto`, search specifically for evidence whose relevant

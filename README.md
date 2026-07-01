@@ -11,17 +11,22 @@ long as the analyst can specify the scope and data requirements clearly.
 
 ## New Users: The Orchestrator
 
-If you have a rough idea rather than finished input documents, use the three
+If you have a rough idea rather than finished input documents, use the four
 explicitly-invoked orchestrator skills, run **in series** (`.claude/skills/tea-scope`,
-`tea-model`, `tea-data`, with a Codex shim under `.agents/` and `.codex/`):
+`tea-model`, `tea-data`, `tea-insights`, with a Codex shim under `.agents/` and
+`.codex/`):
 
 1. **`/tea-scope`** runs intake in plain language — a relentless, question-driven
-   interview — and writes the three starting documents (`scope.md`,
-   `data-requirements.md`, `model-requirements.md`).
+   interview — and writes the four starting documents (`scope.md`,
+   `process-flow.md`, `data-requirements.md`, `model-requirements.md`).
 2. **`/tea-model`** builds a runnable `model.py` from those docs, dry-runs it on
    quick dummy values, and agrees the visualizations with you.
-3. **`/tea-data`** gathers the real, citation-backed evidence, then injects it into
-   the approved model and runs it to produce the final charts and results.
+3. **`/tea-data`** gathers the real, citation-backed evidence and finalizes the
+   gap-free model inputs.
+4. **`/tea-insights`** runs the approved model on those inputs to produce the real
+   charts and results, then surfaces insights and proposes new plots — each tied to
+   a question about your idea — and iterates with you on plots and light model
+   tweaks.
 
 They share durable run state and an issue ledger via `scripts/orchestrator.py`;
 each is hard-gated on the prior skill's approval. You approve the starting
@@ -70,9 +75,9 @@ Use these templates:
 - `auto-review.md` in Auto mode: AI decisions, assumptions, estimates, flags,
   and technical errors.
 
-The pipeline's hand-off is populated inputs (`Main Input.csv`); the `/tea-model`
-and `/tea-data` skills then build, populate, and run a model on top of them,
-writing figures to the run's `plots/` folder.
+The pipeline's hand-off is populated inputs (`Main Input.csv`); the `/tea-model`,
+`/tea-data`, and `/tea-insights` skills then build, populate, and run a model on
+top of them, writing figures to the run's `plots/` folder.
 
 ## Quickstart
 

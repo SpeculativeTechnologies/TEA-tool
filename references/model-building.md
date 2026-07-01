@@ -3,7 +3,7 @@
 The execution contract for `/tea-model` (Skill 2): turn the approved
 `model-requirements.md` into a runnable `model.py`, dry-run it on quick dummy
 values, agree the visualizations with the user, and lock it behind the
-`model_approved` gate. `/tea-data` later re-runs this **same file** on real data.
+`model_approved` gate. `/tea-insights` later runs this **same file** on real data.
 
 Keep the bookkeeping invisible: talk about "the model" and "the charts", not
 schema cells and CSV columns.
@@ -28,8 +28,8 @@ python scripts/build_csvs.py --schema "$RUN/tea-schema.json" --output-dir "$RUN"
 ```
 
 This writes a skeleton `Main Input.csv` (one row per schema cell, keyed by `unit`
-+ `field`). That is the file `/tea-data` will later fill with real values and feed
-to the same model.
++ `field`). That is the file `/tea-data` will later fill with real values;
+`/tea-insights` then feeds it to the same model.
 
 ## 2. Author the model
 
@@ -59,7 +59,7 @@ Implement `compute()`, `headline_metric()`, and `render()` from the
   the tornado) and `load_benchmarks` exposes those cells. Implement the
   `model-requirements.md` "Validation benchmarks" mapping in the
   `results["validation"]` block — each researched benchmark compared against the
-  computed output it checks — so `/tea-data` can present computed-vs-literature.
+  computed output it checks — so `/tea-insights` can present computed-vs-literature.
 
 For a **comparison**, read one inputs CSV per option (repeat `--inputs` or accept a
 mapping) and add the option-comparison charts; keep a single project-level
@@ -95,7 +95,7 @@ ask them to confirm. Record the agreed set in `runs/<project>/viz-spec.md`
 
 Run the model on the dummy inputs, then validate the contract. Write the dummy
 figures and results to **dummy-tagged paths** (`plots-dummy/`,
-`model-results-DUMMY.json`) so the real `/tea-data` run later writes to `plots/`
+`model-results-DUMMY.json`) so the real `/tea-insights` run later writes to `plots/`
 and `model-results.json` **without overwriting the dummy versions** — they stay
 on disk, clearly labelled, as a record of the structure check:
 
@@ -156,9 +156,9 @@ Then direct the user to run `/tea-data`.
 ## Re-runs and drift
 
 `model_approved` hashes `model.py` and `viz-spec.md`. Any later edit (e.g. a light
-inline fix in `/tea-data`) invalidates the approval until you re-`approve` it —
+inline fix in `/tea-insights`) invalidates the approval until you re-`approve` it —
 this is how the model never silently drifts from what the user signed off on. The
-model is re-run verbatim on real data by `/tea-data`; only `--inputs` changes.
+model is re-run verbatim on real data by `/tea-insights`; only `--inputs` changes.
 
 ## Dependency
 
