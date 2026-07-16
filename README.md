@@ -54,5 +54,4 @@ python -m unittest discover -s tests
 ```
 
 The core input pipeline uses the Python standard library. `jsonschema` is
-recommended for full schema validation; `matplotlib` and `openpyxl` support
-charts and Excel workbook output.
+recommended for full schema validation; `matplotlib` supports model charts.

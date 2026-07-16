@@ -33,15 +33,12 @@ already-approved model on it — this run **is** the deliverable. See
 ```
 python "runs/<project>/model.py" --inputs "runs/<project>/Main Input.csv" \
     --outdir "runs/<project>/plots" --results "runs/<project>/model-results.json"
-python scripts/export_workbook.py --run-dir "runs/<project>"
 ```
 
 The real run writes `plots/` and `model-results.json`; the dummy figures from
-`/tea-model` remain in `plots-dummy/` (**not** overwritten). The workbook step
-produces `<project>-model-workbook.xlsx`, a values-only Excel view (no formulas) of
-the inputs, headline dashboard, intermediate outputs, and charts. Present the
-**real** plots, the headline metric(s), the charts, the workbook, and the key
-sources/assumptions. If the run has benchmarks, present the validation comparison
+`/tea-model` remain in `plots-dummy/` (**not** overwritten). Present the **real**
+plots, the headline metric(s), and the key sources/assumptions. If the run has
+benchmarks, present the validation comparison
 explicitly — computed value vs. researched literature benchmark (with its source)
 for each target, from `results["validation"]`. Flag any benchmark that ended up
 **estimated** rather than literature-sourced (`E`/`U`): an estimated benchmark is
@@ -54,7 +51,8 @@ This is the distinctive work of this skill. Read both sides:
 - **What the model produced** — `model-results.json` (the headline metric plus
   every intermediate block the model emitted: cost breakdown, tornado/sensitivity,
   process groups, mass balance, cash flow, validation, …) and the rendered plots.
-- **Why the user is doing this** — the starting documents (`scope.md` decision,
+- **Why the user is doing this** — the starting documents (`scope-summary.md`;
+  `scope.md` decision,
   headline metrics, scenarios, validation targets; `model-requirements.md`;
   `data-requirements.md`; `process-flow.md`) **and the materials the user
   originally supplied** (`provided-materials.json` plus the registered files). For
@@ -123,9 +121,9 @@ add or revise plots.
 ## Transparency in the closing message (both modes)
 
 Fast/Auto mode especially must not be a black box. List and link the key files —
-`plots/`, `model-results.json`, `<project>-model-workbook.xlsx`, `final/Main
-Input.csv`, `Sources.csv`, `Audit_final_consolidated.csv`, `final/run-manifest.md`,
-and in Auto mode `auto-run-log.md` / `final/auto-review.md` — each with a one-line
+`plots/`, `model-results.json`, `final/Main Input.csv`, `Sources.csv`,
+`Audit_final_consolidated.csv`, `final/run-manifest.md`, and in Auto mode
+`auto-run-log.md` / `final/auto-review.md` — each with a one-line
 description. Call out up front every unbacked **`U`** estimate cell (from
 `final/run-manifest.md`) and every source slice recorded as **skipped-with-reason**
 (from `orchestrator.py verify-spawns` / the run's `subagent_jobs`), so the user
@@ -133,9 +131,8 @@ knows exactly what to double-check before trusting a chart.
 
 ## Dependency + subagents
 
-The model layer needs **matplotlib** (`pip install matplotlib`) for charts and
-**openpyxl** (`pip install openpyxl`) for the Excel workbook; the core data pipeline
-stays standard-library-only. Reuse read-only subagents only as needed (e.g. a
-`tea-materials-analyst` to re-read large supplied materials); the main orchestrator
-serializes all canonical writes (phase scripts + orchestrator CLI). Never include
-confidential material content in web queries.
+The model layer needs **matplotlib** (`pip install matplotlib`) for charts; the
+core data pipeline stays standard-library-only. Reuse read-only subagents only as
+needed (e.g. a `tea-materials-analyst` to re-read large supplied materials); the
+main orchestrator serializes all canonical writes (phase scripts + orchestrator
+CLI). Never include confidential material content in web queries.

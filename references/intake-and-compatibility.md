@@ -157,9 +157,15 @@ Record the summary in `intake-summary.md`.
 
 ## Step 6 — Generate the starting documents
 
-You write `scope.md`, `process-flow.md`, `data-requirements.md`, and
-`model-requirements.md` (never the user). `model-requirements.md` (template:
-`templates/model-requirements.template.md`) records desired outputs and units,
+You write `scope-summary.md`, `scope.md`, `process-flow.md`,
+`data-requirements.md`, and `model-requirements.md` (never the user).
+`scope-summary.md` (template: `templates/scope-summary.template.md`) is the
+concise, human-readable "read this first" artifact for the approval moment. It is
+non-authoritative: if it conflicts with the canonical documents, the canonical
+documents control. It must introduce no facts, assumptions, entities, parameters,
+formulas, or benchmark values absent from those documents.
+`model-requirements.md` (template: `templates/model-requirements.template.md`)
+records desired outputs and units,
 the functional-unit relationship, inputs required by each output, supplied vs.
 still-needed inputs, intended formulas when known, scenario/comparison
 relationships, and modeling assumptions and unresolved dependencies. It is the
@@ -168,9 +174,18 @@ outputs and their formulas explicit and numeric. For comparisons use one
 project-level `model-requirements.md`; option folders hold option-specific
 `scope.md` and `data-requirements.md`.
 
-Two communication artifacts the docs must carry so a non-expert can actually
+Three communication artifacts the docs must carry so a non-expert can actually
 *understand* their model — not just approve a black box:
 
+- **Scope summary in `scope-summary.md`.** A short, decision-oriented review
+  artifact covering the decision, boundary, functional unit, basis,
+  options/scenarios, validation targets, the process-flow diagram, model logic,
+  and highest-leverage things to check before approval. Embed the same Mermaid
+  diagram that appears in `process-flow.md` so the summary can be reviewed on its
+  own; `process-flow.md` remains the canonical standalone diagram. It should
+  explicitly tell the user that the other generated documents are mostly working
+  artifacts for the next phases of the pipeline: useful to audit, but not
+  required end-to-end reading before continuing.
 - **Process flow diagram in its own `process-flow.md`.** A Mermaid `flowchart`
   (template: `templates/process-flow.template.md`) with one node per entity, edges
   for the flows between them, and each node annotated with what flows **in**, what
@@ -196,17 +211,20 @@ documents, not in cells.
 ## Step 7 — Review and approve
 
 Run the schema/compatibility reviewer subagent; correct mechanical problems
-before the gate. Show a concise document summary, assumptions and exclusions,
-required input categories, extracted user-value counts and uncertain
+before the gate. Link `scope-summary.md` first as the recommended human-readable
+review artifact, and explain that the remaining generated documents are mostly
+working artifacts for the next phases. Show a concise document summary,
+assumptions and exclusions, required input categories, extracted user-value
+counts and uncertain
 interpretations, fixed inputs, **the process-flow diagram called out and linked**,
 and links to the full documents and `user-inputs.csv`. **Echo, in the approval
 message itself, the "how the model is solved" walkthrough and the full-path worked
 example** (condensed), and **show or link the process-flow diagram**, so the user
 understands how their model will be computed before they sign off — the chat
 message is where the decision happens, so it must not be a black box. Require
-explicit approval of all four documents. On approval:
-`approve --type starting_documents` (hashes `scope.md`, `process-flow.md`,
-`data-requirements.md`, `model-requirements.md`) and
+explicit approval of all five documents. On approval:
+`approve --type starting_documents` (hashes `scope-summary.md`, `scope.md`,
+`process-flow.md`, `data-requirements.md`, `model-requirements.md`) and
 `snapshot --label starting-documents`, then direct the user to run `/tea-model`.
 
 ## Default completeness checklist

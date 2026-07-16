@@ -1,7 +1,7 @@
 interface:
   display_name: "TEA Scope"
   short_description: "Scope a TEA into approved starting docs"
-  default_prompt: "Use $tea-scope to start or resume scoping a TEA run from my rough idea and supplied materials."
+  default_prompt: "Use $tea-scope to set the project scope for a new TEA run: confirm the repository root, load the four-skill workflow, and start or resume scoping from my rough idea and supplied materials."
 
 policy:
   allow_implicit_invocation: false

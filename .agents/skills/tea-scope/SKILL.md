@@ -19,7 +19,7 @@ Code layout and are the single source of truth. Load them from the repo root:
 ## Operating contract (summary — read the shared SKILL.md for the rest)
 
 - Step 1 of 4. Take a non-expert from a rough idea plus supplied materials to the
-  approved starting documents (`scope.md`, `process-flow.md`,
+  approved starting documents (`scope-summary.md`, `scope.md`, `process-flow.md`,
   `data-requirements.md`, `model-requirements.md`), then hand off to `/tea-model`.
 - Resolve ambiguity by **asking, not researching**: a relentless,
   one-question-at-a-time interview, each question with a recommended answer,
@@ -31,5 +31,8 @@ Code layout and are the single source of truth. Load them from the repo root:
   bookkeeping.
 - The deterministic CLI `python scripts/orchestrator.py` is the source of truth.
   Do **not** pick an execution mode here — that happens in `/tea-data`.
-- End at the `starting_documents` approval gate, then direct the user to
-  `/tea-model`.
+- End at the `starting_documents` approval gate, presenting `scope-summary.md` as
+  the recommended human-readable review artifact, then offer two ways to continue:
+  **start a new thread/task and invoke `/tea-model` there**, or type **`/clear`**
+  and continue with `/tea-model`. Emphasize that clearing or using a new thread
+  keeps the tool performant.

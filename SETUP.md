@@ -52,8 +52,7 @@ python -m pip install -r requirements-dev.txt
 This installs:
 
 - `jsonschema` for full schema validation;
-- `matplotlib` for model charts; and
-- `openpyxl` for Excel workbook output.
+- `matplotlib` for model charts.
 
 The core data pipeline otherwise uses the Python standard library.
 
@@ -109,16 +108,17 @@ pilot expansion. I have attached our pilot data spreadsheet.
 ```
 
 The skill will interview you one question at a time and recommend an answer to
-each question. Correct its recommendation where needed. It will create and ask
-you to approve the starting documents before moving on.
+each question. Correct its recommendation where needed. It will create a concise
+`scope-summary.md` for human review, plus the working starting documents the next
+phases need, and ask you to approve them before moving on.
 
 ## 7. Run the Four Skills in Order
 
 ### Step 1: `/tea-scope`
 
 Defines the goal, system boundary, functional unit, entities, scenarios, model
-requirements, data requirements, and desired charts. It writes the approved
-starting documents into a run folder under `runs/`.
+requirements, data requirements, and desired charts. It writes `scope-summary.md`
+plus the approved starting documents into a run folder under `runs/`.
 
 ### Step 2: `/tea-model`
 
@@ -145,8 +145,8 @@ fixed input.
 
 ### Step 4: `/tea-insights`
 
-Runs the approved model using the finalized inputs, produces the real results,
-charts, and workbook, checks benchmark targets, and helps explore follow-up
+Runs the approved model using the finalized inputs, produces the real results and
+charts, checks benchmark targets, and helps explore follow-up
 questions.
 
 Example follow-up:
@@ -175,7 +175,6 @@ Typical final artifacts include:
 - `Sources.csv` - source registry and URLs;
 - `model.py` and `model-results.json` - the approved model and results;
 - `plots/` - model charts;
-- a values-only Excel workbook; and
 - `run-manifest.md` and, for hands-off runs, an automated-review record.
 
 ## 9. Troubleshooting

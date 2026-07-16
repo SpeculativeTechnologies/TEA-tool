@@ -197,6 +197,12 @@ def _validate_shared_rows(
             errors.append(
                 f"shared-inputs.csv row {idx}: source_key {source_key!r} is not in shared-sources.csv"
             )
+        tag = str(row.get("quality_tag") or "").strip().upper()
+        if tag in {"E", "U"}:
+            errors.append(
+                f"shared-inputs.csv row {idx}: quality_tag {tag!r} is reserved for "
+                "per-option Phase 6 estimation; do not pre-populate comparison estimates"
+            )
 
     seen_mappings: dict[tuple[str, str, str], int] = {}
     for idx, row in enumerate(shared_mappings, start=2):

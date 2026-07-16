@@ -21,5 +21,6 @@ load them before doing substantive work:
 - Keep schemas, files, stages, and CSV bookkeeping invisible to the user.
 - Use plain language and ask one question at a time, with a recommended answer.
 - Use `python scripts/orchestrator.py` as the source of truth for state changes.
-- End at approval of `scope.md`, `data-requirements.md`, and
-  `model-requirements.md`, then hand off to `tea-model`.
+- End at approval of `scope-summary.md`, `scope.md`, `process-flow.md`,
+  `data-requirements.md`, and `model-requirements.md`, then hand off to
+  `tea-model`.

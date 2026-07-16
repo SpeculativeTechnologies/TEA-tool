@@ -31,8 +31,10 @@ The CLI is the source of truth; never hand-edit state or CSVs. Run
 
 - If `starting_documents` is **not** in `approvals.valid`, stop and tell the user
   to run `/tea-scope` first (or resume it).
-- If `model_approved` is already valid, the model is **done** — point the user to
-  `/tea-data`.
+- If `model_approved` is already valid, the model is **done** — offer two ways to
+  continue: **start a new thread/task and invoke `/tea-data` there**, or type
+  **`/clear`** and continue with `/tea-data`. Emphasize that clearing or using a
+  new thread keeps the tool performant.
 - Otherwise proceed (resume mid-model, or start it).
 
 ## Build, dry-run, approve
@@ -65,19 +67,10 @@ Per `references/model-building.md`:
 5. **Dry run + smoke check.** Run the model on the dummy inputs to a **separate
    dummy plot dir so the real run never overwrites them**
    (`--outdir "$RUN/plots-dummy" --tag DUMMY`), then `python scripts/check_model.py
-   --model "$RUN/model.py" --inputs "$RUN/model/dummy-inputs.csv"`.
-6. **Excel workbook (spreadsheet view of the outputs).** Build a viewer-friendly
-   workbook so non-coders can inspect the model the way they would a hand-built
-   spreadsheet — main input sheet, dashboard of headline numbers, a sheet per
-   block of intermediate outputs, and the embedded charts (values only, **no
-   formulas** — everything comes from the code):
-   ```
-   python scripts/export_workbook.py --run-dir "$RUN" --tag DUMMY
-   ```
-   This writes `<project>-model-workbook-DUMMY.xlsx`. Present the dummy plots,
-   headline results, and the workbook — all clearly flagged as DUMMY (a structure
+   --model "$RUN/model.py" --inputs "$RUN/model/dummy-inputs.csv"`. Present the
+   dummy plots and headline results, all clearly flagged as DUMMY (a structure
    check, not real numbers).
-7. **Gate.** On approval:
+6. **Gate.** On approval:
    ```
    python scripts/orchestrator.py set-stage --run-dir RUN --stage model_review
    python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
@@ -85,12 +78,13 @@ Per `references/model-building.md`:
    python scripts/orchestrator.py snapshot --run-dir RUN --label model-approved \
        --artifact model.py --artifact viz-spec.md
    ```
-   Then **stop and tell the user to run `/tea-data`.** You do not gather real data
-   or pick an execution mode.
+   Then **stop and explicitly tell the user: "Start a new thread/task and invoke
+   `/tea-data` there, or type `/clear` and continue with `/tea-data`."** Emphasize
+   that clearing or using a new thread keeps the tool performant. You do not gather
+   real data or pick an execution mode.
 
 ## Dependency + subagents
 
-The model layer needs **matplotlib** (`pip install matplotlib`) for charts and
-**openpyxl** (`pip install openpyxl`) for the Excel workbook; the core pipeline
-stays standard-library-only. Reuse read-only subagents only as needed; you
-serialize all canonical writes through the CLI and phase scripts.
+The model layer needs **matplotlib** (`pip install matplotlib`) for charts; the
+core pipeline stays standard-library-only. Reuse read-only subagents only as
+needed; you serialize all canonical writes through the CLI and phase scripts.

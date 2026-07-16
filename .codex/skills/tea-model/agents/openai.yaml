@@ -1,7 +1,7 @@
 interface:
   display_name: "TEA Model"
   short_description: "Build and approve a runnable TEA model"
-  default_prompt: "Use $tea-model to build or resume the runnable model for my approved TEA run."
+  default_prompt: "Use $tea-model to continue the project-scoped TEA workflow: confirm the repository root and approved scope, then build or resume the runnable model for my approved TEA run."
 
 policy:
   allow_implicit_invocation: false

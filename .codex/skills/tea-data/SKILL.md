@@ -20,6 +20,8 @@ load them before doing substantive work:
 - Invoke explicitly only. Do not self-trigger on general TEA questions.
 - Gate-check for `model_approved` before beginning acquisition.
 - Ask the user to choose Guided vs. Hands-off mode here, then lock it.
+- Treat research-first as invariant, not a mode: never offer estimation-led
+  shortcuts, and estimate only residual blanks after the evidence pipeline.
 - Use `python scripts/orchestrator.py` as the source of truth for state changes.
 - Drive `workflow.md` through finalization to a gap-free `Main Input.csv`, record
   the `inputs_finalized` gate, then hand off to `tea-insights` (which runs the

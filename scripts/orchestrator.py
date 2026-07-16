@@ -13,12 +13,14 @@ skill can read the result without parsing prose (orchestrator §7).
     python scripts/orchestrator.py validate-resume --run-dir runs/led-vs-incandescent
     python scripts/orchestrator.py issue add --run-dir RUN --category decision --question "..."
     python scripts/orchestrator.py approve --run-dir RUN --type starting_documents \
-        --artifact scope.md --artifact data-requirements.md --artifact model-requirements.md
+        --artifact scope-summary.md --artifact scope.md --artifact process-flow.md \
+        --artifact data-requirements.md --artifact model-requirements.md
     python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
         --artifact model.py --artifact viz-spec.md
     python scripts/orchestrator.py set-mode --run-dir RUN --mode auto_with_human_gates --lock
     python scripts/orchestrator.py snapshot --run-dir RUN --label starting-documents \
-        --artifact scope.md --artifact data-requirements.md
+        --artifact scope-summary.md --artifact scope.md --artifact process-flow.md \
+        --artifact data-requirements.md --artifact model-requirements.md
     python scripts/orchestrator.py register-material --run-dir RUN --path notes.xlsx --copy
     python scripts/orchestrator.py materialize-user-inputs --run-dir RUN
 
@@ -279,11 +281,13 @@ def cmd_set_stage(
         if report["blocking"]:
             raise OrchestratorError(
                 f"cannot advance {current!r} -> {stage!r}: the {current!r} stage has "
+                f"{len(report['contract_problems'])} contract problem(s), "
                 f"{len(report['missing'])} unaccounted sub-agent job(s) and "
                 f"{len(report['artifact_problems'])} missing output artifact(s). "
                 "Run the missing sub-agent(s), or record a documented exception with "
                 "`record-spawn --status skipped --reason ...`. "
-                f"Details: missing={report['missing']}, "
+                f"Details: contract_problems={report['contract_problems']}, "
+                f"missing={report['missing']}, "
                 f"artifact_problems={report['artifact_problems']}"
             )
 
@@ -304,6 +308,37 @@ def cmd_record_spawn(
 ) -> dict:
     run_dir = Path(run_dir)
     state = st.read_state(run_dir)
+    current = str(state.get("stage") or "")
+    if stage != current:
+        raise OrchestratorError(
+            f"cannot record a spawn for stage {stage!r} while current stage is {current!r}; "
+            "record workers when they return, before advancing"
+        )
+
+    governed_agent = {
+        "evidence_collection": spawn_harness.RESEARCH_SCREENER,
+        "extraction": spawn_harness.SOURCE_EXTRACTOR,
+        "estimation": spawn_harness.ESTIMATION_POPULATOR,
+        "completeness_review": spawn_harness.QUALITY_REVIEWER,
+        "finalization": spawn_harness.QUALITY_REVIEWER,
+    }.get(stage)
+    requirement = spawn_harness.expected_requirement(run_dir, stage, agent_type, unit)
+    if agent_type == governed_agent and requirement is None:
+        raise OrchestratorError(
+            f"spawn ({agent_type}, {unit}) is not an expected unit for stage {stage!r}; "
+            "build the canonical stage artifact/manifest first and use its exact unit id"
+        )
+    if status == "skipped" and agent_type in spawn_harness.NON_SKIPPABLE:
+        raise OrchestratorError(f"agent type {agent_type!r} may not be skipped")
+    if (
+        status == "completed"
+        and requirement is not None
+        and not spawn_harness.requirement_artifact_ok(run_dir, requirement)
+    ):
+        raise OrchestratorError(
+            f"cannot record completed spawn ({agent_type}, {unit}): required output "
+            f"artifact is missing, empty, or invalid: {requirement.get('artifact')}"
+        )
     entry = st.record_spawn(
         state,
         stage=stage,
@@ -419,6 +454,17 @@ def cmd_approve(
 ) -> dict:
     run_dir = Path(run_dir)
     state = st.read_state(run_dir)
+    if approval_type == "inputs_finalized":
+        if state.get("stage") != "finalization":
+            raise OrchestratorError(
+                "inputs_finalized may be approved only while the run is at finalization"
+            )
+        final_review = spawn_harness.verify_stage(run_dir, "finalization", state)
+        if final_review["blocking"]:
+            raise OrchestratorError(
+                "cannot approve inputs_finalized before the final quality review is "
+                f"reconciled: {final_review}"
+            )
     record = st.record_approval(
         state,
         approval_type=approval_type,

@@ -27,6 +27,7 @@ better-quality candidate on its own.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Iterable, Mapping
 
@@ -126,12 +127,20 @@ def validate_user_inputs(
     schema: Schema,
     *,
     known_source_keys: Iterable[str],
+    registered_material_tokens: Iterable[str] = (),
+    source_urls: Mapping[str, str] | None = None,
 ) -> list[str]:
     """Validate user-inputs.csv against an option schema and known sources."""
 
     errors: list[str] = []
     known = {str(key).strip() for key in known_source_keys if str(key).strip()}
     quality_tags = {str(tag).strip().upper() for tag in schema.quality_tags}
+    material_tokens = {
+        str(token).strip().lower()
+        for token in registered_material_tokens
+        if str(token).strip()
+    }
+    urls = source_urls or {}
     seen_ids: dict[str, int] = {}
 
     for idx, row in enumerate(rows, start=2):
@@ -170,6 +179,11 @@ def validate_user_inputs(
         tag = str(row.get("quality_tag") or "").strip().upper()
         if tag and tag not in quality_tags:
             errors.append(f"{label}: quality_tag {tag!r} is not one of {sorted(quality_tags)}")
+        if tag in {"E", "U"}:
+            errors.append(
+                f"{label}: quality_tag {tag!r} is reserved for Phase 6 estimation; "
+                "do not materialize estimates as user inputs"
+            )
 
         source_key = str(row.get("source_key") or "").strip()
         if not source_key:
@@ -178,6 +192,15 @@ def validate_user_inputs(
             errors.append(
                 f"{label}: source_key {source_key!r} is not in user-sources.csv or Sources.csv"
             )
+        if origin == EXTRACTED_ORIGIN and source_key in known:
+            source_url = str(urls.get(source_key) or "").strip().lower()
+            if not material_tokens or not any(
+                token == source_url or token in source_url for token in material_tokens
+            ):
+                errors.append(
+                    f"{label}: input_origin 'extracted' is only for registered user-supplied "
+                    "materials; web research must enter through the screener/extractor lane"
+                )
 
     return errors
 
@@ -269,6 +292,29 @@ def _merge_sources(
     return [by_key[key] for key in sorted(by_key)]
 
 
+def _registered_material_tokens(run_dir: Path) -> set[str]:
+    """Return stable URL/path tokens from ``provided-materials.json``."""
+
+    path = run_dir / "provided-materials.json"
+    if not path.exists():
+        return set()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return set()
+    tokens: set[str] = set()
+    for material in data.get("materials", []):
+        if not isinstance(material, Mapping):
+            continue
+        for field in ("original", "copied_to"):
+            value = str(material.get(field) or "").strip().lower()
+            if not value:
+                continue
+            tokens.add(value)
+            tokens.add(Path(value).name)
+    return {token for token in tokens if token}
+
+
 def _audit_row_for(
     user_input: Mapping[str, str],
     *,
@@ -317,7 +363,17 @@ def materialize_user_inputs(
 
     errors = validate_user_sources(user_sources)
     known_keys = {str(r.get("source_key") or "").strip() for r in (user_sources + existing_sources)}
-    errors += validate_user_inputs(user_inputs, schema, known_source_keys=known_keys)
+    source_urls = {
+        str(row.get("source_key") or "").strip(): str(row.get("source_url") or "").strip()
+        for row in (user_sources + existing_sources)
+    }
+    errors += validate_user_inputs(
+        user_inputs,
+        schema,
+        known_source_keys=known_keys,
+        registered_material_tokens=_registered_material_tokens(run_dir),
+        source_urls=source_urls,
+    )
     if errors:
         raise UserInputError("\n".join(errors))
 

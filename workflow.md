@@ -7,9 +7,9 @@ from the repository root and point `$RUN` at the run folder.
 $RUN = "runs/my-run"
 ```
 
-Each run folder should contain `scope.md`, `data-requirements.md`,
-`tea-schema.json`, working CSVs, source folders, search history, review queues,
-and final artifacts.
+Each run folder should contain `scope-summary.md`, `scope.md`,
+`process-flow.md`, `data-requirements.md`, `tea-schema.json`, working CSVs,
+source folders, search history, review queues, and final artifacts.
 
 New users do not have to drive these stages by hand. The `/tea-data` skill
 (`.claude/skills/tea-data/`) drives this workflow for them — after `/tea-scope`
@@ -106,7 +106,17 @@ rows into `Audit.csv` (`input_origin` of `analyst`/`extracted`/`shared`, and
 a shared input, which outranks ordinary candidates; a fixed cell suppresses
 replacement research, while non-fixed analyst evidence remains a normal candidate.
 
+The `extracted` user-input origin is valid only for a source registered in
+`provided-materials.json`; web-research results cannot enter through this lane.
+`E` and `U` are also rejected here because estimates belong to Phase 6.
+
 ## Phase 1 - Master-List Search
+
+This phase is mandatory for every run and every comparison option. Research
+depth is not configurable: do not offer an estimation-led alternative or skip an
+option because evidence is expected to be sparse. Estimation begins only in
+Phase 6 after search, targeted gap fill, extraction, normalization, and
+completeness review leave a cell blank.
 
 ### 1.1 Search
 
@@ -116,6 +126,17 @@ returns candidate JSON only. Save it, for example:
 ```text
 $RUN/search-history/master-list.json
 ```
+
+Record the screener only after that JSON exists:
+
+```powershell
+python scripts/orchestrator.py record-spawn --run-dir "$RUN" `
+    --stage evidence_collection --agent-type tea-research-screener --unit master-list
+```
+
+For a comparison parent run, use one unit per option
+(`master-list:OPTION_ID`) and save the artifact under
+`options/OPTION_ID/search-history/master-list.json`.
 
 Reference-value searches must be context-free. They should not mention this
 TEA's system, entities, or route.
@@ -177,6 +198,11 @@ cap when present, otherwise at most 5 candidates. Save outputs such as:
 $RUN/search-history/gap-fill-ENTITY.json
 ```
 
+Record each targeted screener as `gap-fill:ENTITY` after its JSON exists (for a
+comparison parent: `gap-fill:OPTION_ID:ENTITY`). A residual gap in this output is
+evidence that the normal search lane did not find a usable source; it is not
+permission to populate a value before Phase 6.
+
 ### 2.2 Screen And Download Gate
 
 Review each gap-fill candidate:
@@ -231,6 +257,9 @@ recorded as a documented skip, never silently dropped):
 python scripts/orchestrator.py record-spawn --run-dir "$RUN" --stage extraction --agent-type tea-source-extractor --unit SLICE_ID
 python scripts/orchestrator.py record-spawn --run-dir "$RUN" --stage extraction --agent-type tea-source-extractor --unit SLICE_ID --status skipped --reason "unreadable source, quarantined"
 ```
+
+For a comparison parent, build the manifest inside every option folder and
+record the parent-ledger unit as `OPTION_ID:SLICE_ID`.
 
 ### 3.2 Resolve Scope-Relevance Holds
 
@@ -317,7 +346,8 @@ Pinned cells always outrank ordinary rows.
 
 Run the `tea-quality-reviewer` subagent over the consolidated inputs
 (`Main Input.csv`, consolidated `Audit`, `Sources.csv`) to assess coverage,
-quality, and residual gaps, then record the pass (it is mandatory and
+quality, and residual gaps. Save its report to
+`$RUN/reviews/completeness-review.md`, then record the pass (it is mandatory and
 non-skippable):
 
 ```powershell
@@ -362,11 +392,18 @@ Run `prompts/estimation-orchestrator.md` with the manifest. It drives the
 - **Loop 3** emits a transparent, flagged **unbacked `U`** estimate when no
   anchor is sourceable. No cell is ever left blank.
 
+Do not create or accept estimates outside this phase. In particular, do not put
+research-worker derivations into `user-inputs.csv`, and do not label a derived
+value `A`–`D`; those tags are reserved for real extracted evidence.
+
 Record the estimation sub-agents as they run (the stage is harnessed):
 
 ```powershell
 python scripts/orchestrator.py record-spawn --run-dir "$RUN" --stage estimation --agent-type estimation-populator --unit ENTITY
 ```
+
+For a comparison parent, build one estimation manifest per option and use
+`OPTION_ID:ENTITY` as the recorded unit.
 
 Save the combined output as:
 
@@ -414,7 +451,8 @@ python scripts/consolidate.py --schema "$RUN/tea-schema.json" --audit "$RUN/Audi
 ## Phase 7 - Hand Off
 
 Before finalizing, run the `tea-quality-reviewer` subagent once more over the
-post-estimation consolidated inputs and record the pass (mandatory,
+post-estimation consolidated inputs, save its report to
+`$RUN/reviews/finalization-review.md`, and record the pass (mandatory,
 non-skippable):
 
 ```powershell

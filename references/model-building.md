@@ -109,37 +109,7 @@ python scripts/check_model.py --model "$RUN/model.py" \
 The `--tag DUMMY` also stamps `[DUMMY]` on every chart title, so a stray figure is
 never mistaken for real data.
 
-## 6. Excel workbook (spreadsheet view)
-
-Every model run also produces a viewer-friendly Excel workbook so people who think
-in spreadsheets rather than code or JSON can inspect the TEA. It is a **read-only
-presentation layer — values only, never formulas**; all numbers are computed by
-`model.py` and laid out by `scripts/export_workbook.py` (modelled on a
-conventional hand-built TEA workbook):
-
-- **Overview** — what the workbook is, data status (dummy vs. real), run details.
-- **Dashboard** — the headline metrics.
-- **Main Input** — the input table, with the input/value cells shaded grey.
-- **One sheet per intermediate output block** the model emitted (cost breakdown,
-  process groups, energy, recovery, scorecard, …) — driven generically off the
-  results JSON, so a richer model produces a richer workbook.
-- **Charts** — the rendered figures embedded inline.
-
-```
-python scripts/export_workbook.py --run-dir "$RUN" --tag DUMMY
-```
-
-`--run-dir` fills in the dummy defaults (`model/dummy-inputs.csv`,
-`model-results-DUMMY.json`, `plots-dummy/`) and writes
-`<project>-model-workbook-DUMMY.xlsx`. Present the dummy plots, the headline
-results, and the workbook for review — all clearly flagged as DUMMY (structure
-check, not real numbers).
-
-To make the workbook richer, have `compute()` return intermediate tables in the
-results dict (e.g. a `breakdown`, `groups`, `mass_balance`, or `cash_flow`
-block); each top-level section becomes its own sheet automatically.
-
-## 7. Model-approval gate
+## 6. Model-approval gate
 
 On approval, lock the model + chosen charts, then hand off:
 
@@ -162,6 +132,5 @@ model is re-run verbatim on real data by `/tea-insights`; only `--inputs` change
 
 ## Dependency
 
-The model layer needs **matplotlib** (`pip install matplotlib`) for charts and
-**openpyxl** (`pip install openpyxl`) for the Excel workbook; the core data
-pipeline stays standard-library-only.
+The model layer needs **matplotlib** (`pip install matplotlib`) for charts; the
+core data pipeline stays standard-library-only.

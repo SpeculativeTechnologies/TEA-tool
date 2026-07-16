@@ -25,6 +25,13 @@ Both modes pause for:
 `/tea-model`; touching either invalidates its approval and is handled as an
 amendment.)
 
+Research depth is fixed by the workflow, not selected at a gate. Never ask the
+user to choose live research versus estimation, and never introduce a fast,
+estimation-led, calibration-only, or "research one option, estimate the rest"
+path. Runtime, token use, and subagent count are not consequential decisions.
+Estimation is available only for residual blanks after the recorded search,
+screening, extraction, normalization, and completeness stages.
+
 ## Mode selection (start of /tea-data)
 
 `/tea-data` begins by asking the user, in novice language, how to run the data
@@ -43,6 +50,10 @@ python scripts/orchestrator.py set-mode --run-dir RUN \
 
 The mode is immutable once locked (changing it requires a new run) and governs
 only the gate behavior in the stages below.
+
+Auto is an interaction policy, not permission to skip work. In Hands-off mode,
+resolve gates without the user while preserving the same research-first stage
+sequence and provenance requirements as Guided mode.
 
 ## Guided mode — decision cards
 
@@ -72,6 +83,8 @@ to interrupt. Still pause for the four shared pause conditions above.
 
 ## Source handling (per research round)
 
+- Use `tea-research-screener` to produce candidate JSON only. Do not ask a
+  general-purpose worker to search and return final values for every cell.
 - Fan out shared and option-specific searches as appropriate.
 - Present **exactly one approval batch** containing shared and all
   option-specific sources, labeled by coverage.
@@ -115,15 +128,28 @@ candidates under quality/scope-fit/recency/disagreement rules. Candidate
 cell satisfied. Contrary evidence may be recorded but cannot displace a fixed
 input without explicit user approval.
 
+`user-inputs.csv` is exclusively for values actually supplied or fixed by the
+user (including values extracted from user-supplied material). Never place
+web-research results, model-generated derivations, or subagent-synthesized values
+in that lane. An `input_origin=extracted` user input must trace to a material
+already registered in `provided-materials.json`; `E`/`U` tags are rejected from
+this lane. Web evidence must enter through extraction, and estimates through
+Phase 6.
+
 ## Comparisons
 
 - Support two or more options; warn and confirm once for three or more.
 - Require functional equivalence, not identical schemas.
 - Search shared assumptions first, then fan out option-specific research.
+- Run the full evidence pipeline for every option. Researching one option does
+  not authorize estimating the others from it; cross-option analogy is permitted
+  only inside the Phase 6 estimation ladder for a documented residual blank.
 - Present shared and option sources together in one approval batch per round.
 - Materialize shared inputs with `scripts/materialize_shared_inputs.py
   --project-dir <project>` after each option's CSVs are built; search,
   extraction, and estimation skip cells already satisfied by `input_origin=shared`.
+- Do not pre-populate `E`/`U` estimates in `shared-inputs.csv`; estimate residual
+  blanks through each option's Phase 6 lane so the justification remains intact.
 - Adding or removing an option after approval is a mandatory scope amendment.
 - Keep one project-level state and issue ledger; option folders hold normal TEA
   artifacts and compact phase status.
@@ -216,14 +242,21 @@ python scripts/orchestrator.py record-spawn --run-dir RUN --stage STAGE \
 
 Expected units per stage (see `scripts/lib/spawn_harness.py`):
 
+- `evidence_collection` — the canonical master-list screener output for a
+  single run, or one canonical master-list output per comparison option. Record
+  predicted gap-fill screener units too; their JSON outputs are required.
 - `extraction` — one `tea-source-extractor` per `extractions/extraction_manifest.json`
   slice (`unit` = slice `id`). The slice's `output_json` must exist and be
-  non-empty (output-artifact backstop).
+  non-empty (output-artifact backstop). Comparison parents derive this from each
+  option manifest and use `unit` = `OPTION_ID:SLICE_ID`.
 - `estimation` — one `estimation-populator` per blank-cell entity in
   `estimation_manifest.json` (`unit` = entity id). The single anchor's own
-  research/extraction spawns are recorded too, under the same stage.
+  research/extraction spawns are recorded too, under the same stage. Comparison
+  parents use `unit` = `OPTION_ID:ENTITY_ID`.
 - `completeness_review` and `finalization` — exactly one `tea-quality-reviewer`
-  each (`unit` = the stage name). **Non-skippable**: a skip never satisfies it.
+  each (`unit` = the stage name), saved respectively to
+  `reviews/completeness-review.md` and `reviews/finalization-review.md`.
+  **Non-skippable**: a skip never satisfies it.
 
 Check status anytime; the forward `set-stage` move enforces it automatically:
 
@@ -232,10 +265,12 @@ python scripts/orchestrator.py expected-spawns --run-dir RUN --stage extraction
 python scripts/orchestrator.py verify-spawns  --run-dir RUN --stage extraction
 ```
 
-`set-stage` refuses a forward move while the stage being left has any expected
+`record-spawn` accepts only a current-stage, manifest-derived unit whose required
+output artifact already exists. `set-stage` refuses a forward move while the stage
+being left has any expected
 unit unaccounted for (not completed and not skipped-with-reason) or any completed
 slice missing its output artifact. There is **no force override** — a legitimate
 exception is a recorded `--status skipped --reason ...`, which also surfaces in
 the audit trail and the closing summary. Rewinds (amendments) are never gated.
-Stages without a derivable manifest (open-ended research rounds) are recorded but
-not hard-gated.
+Missing evidence, extraction, or estimation manifests are blocking contract
+failures, not permission to proceed.

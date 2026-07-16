@@ -1,5 +1,6 @@
 """Tests for analyst user inputs, fixed precedence, and no-gap finalization."""
 
+import json
 import shutil
 import sys
 import tempfile
@@ -133,6 +134,20 @@ class MaterializationTests(unittest.TestCase):
     def test_uploaded_evidence_retains_extracted_origin(self):
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = self._build(tmp)
+            (run_dir / "provided-materials.json").write_text(
+                json.dumps(
+                    {
+                        "materials": [
+                            {
+                                "id": "mat-001",
+                                "original": "https://internal.note/analyst",
+                                "is_url": True,
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
             write_user_files(
                 run_dir,
                 [
@@ -153,6 +168,52 @@ class MaterializationTests(unittest.TestCase):
             row = [r for r in read_rows(run_dir / "Audit.csv") if "user_input_id=ui-doc" in r["notes"]][0]
             self.assertEqual(row["input_origin"], "extracted")
             self.assertEqual(row["input_priority"], "fixed")
+
+    def test_web_research_cannot_be_disguised_as_extracted_user_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._build(tmp)
+            write_user_files(
+                run_dir,
+                [
+                    {
+                        "input_id": "worker-result",
+                        "entity": "compute_hardware",
+                        "parameter": "monthly_cost",
+                        "raw_value": "4200",
+                        "raw_units": "USD/month",
+                        "source_key": "analyst-batch",
+                        "quality_tag": "B",
+                        "input_origin": "extracted",
+                    }
+                ],
+            )
+            with self.assertRaisesRegex(UserInputError, "screener/extractor lane"):
+                materialize_user_inputs(
+                    schema_path=run_dir / "tea-schema.json", run_dir=run_dir
+                )
+
+    def test_estimate_tags_cannot_enter_through_user_inputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._build(tmp)
+            write_user_files(
+                run_dir,
+                [
+                    {
+                        "input_id": "worker-estimate",
+                        "entity": "compute_hardware",
+                        "parameter": "monthly_cost",
+                        "raw_value": "4200",
+                        "raw_units": "USD/month",
+                        "source_key": "analyst-batch",
+                        "quality_tag": "E",
+                        "input_origin": "analyst",
+                    }
+                ],
+            )
+            with self.assertRaisesRegex(UserInputError, "reserved for Phase 6"):
+                materialize_user_inputs(
+                    schema_path=run_dir / "tea-schema.json", run_dir=run_dir
+                )
 
     def test_conflicting_fixed_inputs_block_materialization(self):
         with tempfile.TemporaryDirectory() as tmp:

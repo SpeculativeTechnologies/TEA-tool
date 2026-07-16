@@ -21,8 +21,8 @@ load them before doing substantive work:
 - Gate-check for both `inputs_finalized` and `model_approved` before running.
 - Use `python scripts/orchestrator.py` as the source of truth for state changes.
 - Run the approved `model.py` on the finalized `Main Input.csv` to write the real
-  `plots/` and `model-results.json`; present the charts, headline metrics, the
-  workbook, and any benchmark validation.
+  `plots/` and `model-results.json`; present the charts, headline metrics, and any
+  benchmark validation.
 - Surface the insights the real data shows, then propose ~3–6 new visualizations —
   each paired with the question about the user's idea it answers, tagged by cost
   (existing output / light model change / structural → back to `tea-model`).

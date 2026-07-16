@@ -1,0 +1,24 @@
+Simple Setup Handoff
+
+1. Clone the repository:
+
+   git clone <repository-url>
+
+2. Open the cloned repository in your favorite coding agent.
+
+3. Ask the agent to inspect the repository and complete the remaining setup steps.
+   Codex and Claude are both reasonable choices for this handoff.
+   Tell the agent that the project scope is the four TEA skills:
+   /tea-scope -> /tea-model -> /tea-data -> /tea-insights.
+
+Slight recommendation: use Codex if the setup may require web search or checking
+current documentation, since it tends to be more persistent in searching,
+verifying, and continuing through multi-step setup work.
+
+Suggested prompt:
+
+   I just cloned this repository. Please inspect it from the repository root,
+   verify the hidden skill folders, install any required dependencies, run the
+   relevant checks or tests, and tell me whether the project-scoped four-skill
+   TEA workflow (/tea-scope -> /tea-model -> /tea-data -> /tea-insights) is ready
+   for a new user.

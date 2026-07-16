@@ -112,6 +112,55 @@ def _validate_complete(main_rows: list[dict[str, str]], schema: Schema) -> None:
         )
 
 
+def _validate_estimate_provenance(main_rows: list[dict[str, str]]) -> None:
+    """Require selected E/U values to carry the Phase 6 estimation contract."""
+
+    errors: list[str] = []
+    for row in main_rows:
+        tag = str(row.get("quality_tag") or "").strip().upper()
+        if tag not in {"E", "U"} or not main_row_has_value(row):
+            continue
+        cell = f"({row.get('entity', '')},{row.get('parameter', '')})"
+        raw = str(row.get("estimate_justification") or "").strip()
+        try:
+            justification = json.loads(raw) if raw else None
+        except json.JSONDecodeError:
+            justification = None
+        if not isinstance(justification, Mapping):
+            errors.append(f"{cell}: {tag} value lacks structured Phase 6 estimate_justification")
+            continue
+        if not str(justification.get("enabling_assumption") or "").strip():
+            errors.append(f"{cell}: estimate_justification.enabling_assumption is required")
+        if not str(justification.get("equation") or "").strip():
+            errors.append(f"{cell}: estimate_justification.equation is required")
+        steps = justification.get("derivation_steps")
+        if not isinstance(steps, list) or not steps:
+            errors.append(f"{cell}: estimate_justification.derivation_steps is required")
+        method = str(justification.get("method") or "").strip()
+        loop = justification.get("loop")
+        if tag == "E":
+            anchor = justification.get("anchor")
+            if method != "single_anchor" or loop not in {1, 2} or not isinstance(anchor, Mapping):
+                errors.append(
+                    f"{cell}: E value must be a loop 1/2 single_anchor estimate with a real anchor"
+                )
+            elif not str(anchor.get("source_key") or "").strip() or not str(
+                anchor.get("page_ref") or ""
+            ).strip():
+                errors.append(f"{cell}: E anchor requires source_key and page_ref")
+        elif (
+            method != "unbacked"
+            or loop != 3
+            or justification.get("unbacked") is not True
+        ):
+            errors.append(f"{cell}: U value must be an explicitly unbacked loop 3 estimate")
+    if errors:
+        raise ValueError(
+            "estimate provenance validation failed; estimates must be created through Phase 6:\n"
+            + "\n".join(errors)
+        )
+
+
 def _auto_review_markdown(
     *,
     schema: Schema,
@@ -350,6 +399,7 @@ def finalize_inputs(
     main_rows = read_rows(main_input_path, required_columns=MAIN_INPUT_FIELDNAMES)
     _validate_main_input(main_rows, schema)
     if require_complete:
+        _validate_estimate_provenance(main_rows)
         _validate_complete(main_rows, schema)
     sources_rows = read_rows(sources_path, required_columns=SOURCES_FIELDNAMES, missing_ok=True)
     audit_rows = (

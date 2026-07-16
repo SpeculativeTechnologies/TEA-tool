@@ -1,9 +1,10 @@
 <!--
 model-requirements.md — written by /tea-scope, not the analyst.
 
-This is the third starting document (alongside scope.md and data-requirements.md).
-It is the SPECIFICATION that /tea-model implements as a runnable model.py: the
-outputs to compute, their formulas, and the schema cells each output consumes.
+This is a canonical starting document, alongside scope.md, process-flow.md, and
+data-requirements.md. It is the SPECIFICATION that /tea-model implements as a
+runnable model.py: the outputs to compute, their formulas, and the schema cells
+each output consumes. The concise human review companion is scope-summary.md.
 Make it explicit and numeric.
 
 Keep every row's "required inputs" pointing at real schema cells

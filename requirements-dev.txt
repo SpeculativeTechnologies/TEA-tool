@@ -10,12 +10,7 @@
 # test suite exercises the JSON Schema directly. Install it for development/CI:
 jsonschema>=4
 
-# matplotlib is REQUIRED only for the model layer (/tea-model, /tea-data): the
+# matplotlib is REQUIRED only for the model layer (/tea-model, /tea-insights): the
 # bespoke runs/<project>/model.py renders figures with it. The core input
 # pipeline stays standard-library-only.
 matplotlib>=3
-
-# openpyxl is REQUIRED only for the Excel workbook export (/tea-model, /tea-data):
-# scripts/export_workbook.py lays out the model outputs as a values-only workbook
-# for spreadsheet users. The core input pipeline stays standard-library-only.
-openpyxl>=3

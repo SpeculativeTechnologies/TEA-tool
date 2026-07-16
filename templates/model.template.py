@@ -16,9 +16,8 @@ them and `/tea-insights` re-runs this exact file on real data:
   overwritten.
 - **A results JSON** with the `model-requirements.md` headline outputs. Return any
   intermediate tables here too (a `breakdown`, `groups`, `mass_balance`,
-  `cash_flow`, … block): `scripts/export_workbook.py` turns each top-level results
-  section into its own sheet in the viewer-friendly Excel workbook, so a richer
-  results dict yields a richer spreadsheet for non-coders to inspect.
+  `cash_flow`, … block) so `/tea-insights` can interpret the model and propose
+  decision-relevant follow-up plots.
 
 Usage:
     python model.py [--inputs CSV] [--outdir DIR] [--results JSON] [--tag TEXT]

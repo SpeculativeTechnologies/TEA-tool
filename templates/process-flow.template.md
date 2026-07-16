@@ -1,9 +1,10 @@
 <!--
 process-flow.md — written by /tea-scope, not the analyst.
 
-This is a starting document alongside scope.md, data-requirements.md, and
-model-requirements.md. It is the one-glance picture of how the system OPERATES and
-is approved and snapshotted together with scope.md.
+This is a canonical starting document alongside scope.md, data-requirements.md,
+and model-requirements.md. It is the one-glance picture of how the system
+OPERATES and is approved and snapshotted together with scope-summary.md and the
+canonical docs.
 
 Author it directly from the Entity Decomposition table in scope.md: one node per
 entity, edges for the flows between connected entities. Each node describes the

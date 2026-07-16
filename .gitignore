@@ -7,3 +7,9 @@ __pycache__/
 venv/
 env/
 runs/
+
+# Locally archived, not-yet-shipping summary Excel workbook feature.
+.local-archive/summary-excel-workbook/
+*-model-workbook*.xlsx
+*-redesigned-workbook*.xlsx
+outputs/019f6b40-c179-74e3-b9f1-18cc9ce21a9f/

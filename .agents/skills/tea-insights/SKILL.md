@@ -25,8 +25,8 @@ Code layout and are the single source of truth. Load them from the repo root:
   `model_approved` (from `/tea-model`) in `status.approvals.valid`, else send the
   user back to the skill that owns the missing gate.
 - Run `model.py --inputs "<run>/Main Input.csv" --outdir "<run>/plots"
-  --results "<run>/model-results.json"` then `export_workbook.py --run-dir <run>`.
-  The real run writes `plots/` + `model-results.json`; the DUMMY figures from
+  --results "<run>/model-results.json"`. The real run writes `plots/` +
+  `model-results.json`; the DUMMY figures from
   `/tea-model` stay in `plots-dummy/` (not overwritten).
 - Propose ~3–6 new visualizations, each paired with the decision-relevant question
   it answers and tagged by cost (existing output / light model change / structural).
@@ -34,5 +34,5 @@ Code layout and are the single source of truth. Load them from the repo root:
   light `model.py`/`viz-spec.md` tweaks (re-`approve model_approved` after any edit
   and log it); structural changes go back to `/tea-model`. Set the stage to
   `complete` when the user is done; the run stays re-runnable.
-- Needs **matplotlib** (charts) and **openpyxl** (workbook). The deterministic CLI
-  `python scripts/orchestrator.py` is the source of truth.
+- Needs **matplotlib** for charts. The deterministic CLI `python
+  scripts/orchestrator.py` is the source of truth.

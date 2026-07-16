@@ -4,10 +4,11 @@ description: >-
   Step 1 of the explicitly-invoked TEA orchestrator, run in series
   (/tea-scope -> /tea-model -> /tea-data -> /tea-insights). Takes a non-expert
   from a rough idea
-  and any supplied materials to approved starting documents (scope,
-  data-requirements, model-requirements) through a relentless, question-driven
-  interview. Invoke ONLY when the user runs /tea-scope or explicitly asks to
-  start/scope a TEA. Do not self-invoke for general TEA questions.
+  and any supplied materials to approved starting documents (scope-summary,
+  scope, process-flow, data-requirements, model-requirements) through a
+  relentless, question-driven interview. Invoke ONLY when the user runs
+  /tea-scope or explicitly asks to start/scope a TEA. Do not self-invoke for
+  general TEA questions.
 ---
 
 # TEA Scoping (/tea-scope)
@@ -47,8 +48,11 @@ uses: `init`, `status`, `validate-resume`, `set-stage`, `issue`, `approve`,
 Look under `runs/` for existing runs (`validate-resume --run-dir <run>`).
 
 - If a run's `starting_documents` approval is already valid (`status` →
-  `approvals.valid`), scoping is **done** — tell the user to run `/tea-model` (or
-  `/tea-data` if `model_approved` is also valid). Do not redo scoping.
+  `approvals.valid`), scoping is **done** — tell the user to **start a new
+  thread/task and invoke `/tea-model` there** (or `/tea-data` if
+  `model_approved` is also valid), or type **`/clear`** and continue with the
+  next applicable skill. Emphasize that clearing or using a new thread keeps the
+  tool performant. Do not redo scoping.
 - If an unfinished run is still in scoping (stage `intake` …
   `starting_documents_review`, not yet approved), summarize it and offer to resume.
 - Otherwise start a new run.
@@ -98,11 +102,27 @@ Full contract: `references/intake-and-compatibility.md`. In short:
 
 ## Starting documents + approval gate
 
-You (not the user) write `scope.md`, `process-flow.md`, `data-requirements.md`, and
-`model-requirements.md` (templates in `templates/`). Make `model-requirements.md`
+You (not the user) write `scope-summary.md`, `scope.md`, `process-flow.md`,
+`data-requirements.md`, and `model-requirements.md` (templates in `templates/`).
+`scope-summary.md` is the concise, human-readable "read this first" artifact for
+the approval moment. It is not authoritative: if it conflicts with `scope.md`,
+`process-flow.md`, `data-requirements.md`, or `model-requirements.md`, those
+canonical documents control. Make `model-requirements.md`
 explicit and numeric — it is the specification `/tea-model` implements as a
 runnable `model.py`, so spell out every output and its formula and map each
-required input to a real schema cell. Three things the docs must contain:
+required input to a real schema cell. Four things the docs must contain:
+
+- **Scope summary (`scope-summary.md`).** Write a short, decision-oriented summary
+  from `templates/scope-summary.template.md`: the decision, boundary, functional
+  unit, basis, options/scenarios, validation targets, the process-flow diagram,
+  how the model produces the headline number, and the highest-leverage things for
+  the user to check before approval. Embed the same Mermaid diagram that appears
+  in `process-flow.md` so the summary is self-contained; `process-flow.md` remains
+  the canonical standalone diagram. The summary must introduce no facts,
+  assumptions, entities, parameters, formulas, or benchmark values absent from the
+  canonical documents. It should explicitly say that the other generated documents
+  are mostly working artifacts for the next phases of the pipeline: the user may
+  audit them, but does not need to read them end to end before continuing.
 
 - **Process flow diagram (its own `process-flow.md`).** Author a **Mermaid
   `flowchart`** from the entity decomposition: each entity is a node, each "connects
@@ -139,9 +159,12 @@ required input to a real schema cell. Three things the docs must contain:
 Compile the schema
 (`prompts/stage0-schema-compile.md`; numeric-only — no JSON/TEXT cells), run the
 `tea-schema-reviewer` subagent and fix mechanical problems, then present a compact
-summary (assumptions, exclusions, input categories, extracted user-value counts,
-fixed inputs, **the process-flow diagram called out and linked**, and links to the
-docs and `user-inputs.csv`) and require **explicit approval of all four documents**.
+approval message that links `scope-summary.md` first as the recommended review
+artifact, explains that the remaining documents are mainly pipeline artifacts for
+the next phases, and includes assumptions, exclusions, input categories, extracted
+user-value counts, fixed inputs, **the process-flow diagram called out and
+linked**, and links to the full docs and `user-inputs.csv`. Require **explicit
+approval of all five documents**.
 **Echo the "how the model is solved" walkthrough and the full-path worked example in
 the approval message itself** (condensed), and **show or link the process-flow
 diagram** — this is the moment the user decides, so do not make them dig into the
@@ -150,15 +173,18 @@ docs to understand how their model will actually be computed. On approval:
 ```
 python scripts/orchestrator.py set-stage --run-dir RUN --stage starting_documents_review
 python scripts/orchestrator.py approve --run-dir RUN --type starting_documents \
-    --artifact scope.md --artifact process-flow.md \
+    --artifact scope-summary.md --artifact scope.md --artifact process-flow.md \
     --artifact data-requirements.md --artifact model-requirements.md
 python scripts/orchestrator.py snapshot --run-dir RUN --label starting-documents \
-    --artifact scope.md --artifact process-flow.md \
+    --artifact scope-summary.md --artifact scope.md --artifact process-flow.md \
     --artifact data-requirements.md --artifact model-requirements.md
 ```
 
-Then **stop and tell the user to run `/tea-model`.** You do not build the model,
-gather data, or pick an execution mode — those belong to the later skills.
+Then **stop and explicitly tell the user: "Start a new thread/task and invoke
+`/tea-model` there, or type `/clear` and continue with `/tea-model`."** Emphasize
+that clearing or using a new thread keeps the tool performant. You do not build
+the model, gather data, or pick an execution mode — those belong to the later
+skills.
 
 ## Subagents
 

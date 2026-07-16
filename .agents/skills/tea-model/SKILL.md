@@ -20,7 +20,9 @@ Code layout and are the single source of truth. Load them from the repo root:
 - Step 2 of 4. Turn the approved `model-requirements.md` into a runnable
   `runs/<project>/model.py`, dry-run it on quick **dummy** values, agree the
   visualizations with the user, lock it behind the `model_approved` gate, then hand
-  off to `/tea-data`.
+  off by offering two ways to continue: **start a new thread/task and invoke
+  `/tea-data` there**, or type **`/clear`** and continue with `/tea-data`.
+  Emphasize that clearing or using a new thread keeps the tool performant.
 - Gate-check first: require `starting_documents` in `status.approvals.valid`, else
   send the user to `/tea-scope`.
 - `model.py` is a **pure function of its `--inputs` CSV** (reads `(entity,
@@ -29,10 +31,7 @@ Code layout and are the single source of truth. Load them from the repo root:
   re-runs the same file on real data.
 - Dummy values are quick, rough, order-of-magnitude, from your own knowledge —
   **no web search**.
-- Dry-run figures + workbook go to dummy-tagged paths (`plots-dummy/`,
-  `<project>-model-workbook-DUMMY.xlsx`) so `/tea-insights`'s real run never overwrites
-  them. Every run also emits a values-only Excel workbook via
-  `scripts/export_workbook.py` (main input, dashboard, intermediate outputs,
-  charts) for spreadsheet users.
-- Needs **matplotlib** (charts) and **openpyxl** (workbook). The deterministic CLI
-  `python scripts/orchestrator.py` is the source of truth.
+- Dry-run figures go to `plots-dummy/` so `/tea-insights`'s real run never
+  overwrites them.
+- Needs **matplotlib** for charts. The deterministic CLI `python
+  scripts/orchestrator.py` is the source of truth.

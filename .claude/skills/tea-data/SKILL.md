@@ -2,7 +2,7 @@
 name: tea-data
 description: >-
   Step 3 of the explicitly-invoked TEA orchestrator, run in series
-  (/tea-scope -> /tea-model -> /tea-data -> /tea-insights). Gathers real,
+  (/tea-scope → /tea-model → /tea-data → /tea-insights). Gathers real,
   citation-backed evidence (auto or guided), populates the approved model's
   inputs, and finalizes the gap-free input set, then hands off to /tea-insights to
   run the model. Invoke ONLY when the user runs /tea-data or explicitly asks to
@@ -32,8 +32,10 @@ The CLI is the source of truth; never hand-edit state or CSVs. Run
 - If `model_approved` is **not** in `approvals.valid`, stop and tell the user to
   run `/tea-model` first (or resume it).
 - If `inputs_finalized` is already in `approvals.valid` (or the run is
-  `complete`), data acquisition is **done** — point the user to `/tea-insights` to
-  run the model and explore the results.
+  `complete`), data acquisition is **done** — offer two ways to continue: **start
+  a new thread/task and invoke `/tea-insights` there**, or type **`/clear`** and
+  continue with `/tea-insights` to run the model and explore the results.
+  Emphasize that clearing or using a new thread keeps the tool performant.
 - Otherwise resume or begin acquisition.
 
 ## 1. Choose the mode (only here)
@@ -50,6 +52,13 @@ python scripts/orchestrator.py set-mode --run-dir RUN \
 
 The mode is immutable once locked (changing it requires a new run) and governs
 only the gate behavior in the stages below.
+
+**Evidence depth is not a mode or a user choice.** Guided vs. Hands-off changes
+who resolves gates, never whether the evidence stages run. Do not ask how much
+to research, offer an estimation-led/fast path, or shorten research because of
+runtime, token, or subagent cost. Search, screen, download, and extract real
+sources first; create estimates only in Phase 6 for cells that remain blank
+after the recorded evidence pipeline and completeness review.
 
 ## 2. Gather + populate (workflow.md Phases 1–7)
 
@@ -68,6 +77,14 @@ gates and consequential decisions (Guided) per
 `references/interaction-and-gates.md`. No mode finalizes with blank cells; finalize
 with `scripts/finalize_inputs.py` (and `scripts/finalize_comparison.py` for
 comparisons), which enforces exactly one finite numeric value per cell.
+
+Keep worker roles separated. A research screener returns source candidates only;
+an extractor reads an approved source and returns extracted evidence only; an
+estimation populator runs only from `estimation_manifest.json`. Never ask one
+worker to search and populate every cell, never turn a worker's synthesized
+values into `user-inputs.csv`, and never treat model-generated values as analyst
+inputs. `A`–`D` tags require real extracted evidence; derived values are `E`
+(backed) or `U` (unbacked) and must pass through Phase 6.
 
 ## 3. Finalize + hand off to /tea-insights
 
@@ -88,8 +105,10 @@ For a comparison project, gate on the comparison outputs instead
 
 Leave the stage at `finalization` — **do not run the model and do not set
 `complete`** (those belong to `/tea-insights`). Then present a plain-language
-**data** summary and **stop, telling the user to run `/tea-insights`** to run the
-model and explore the results.
+**data** summary and **stop, explicitly telling the user: "Start a new thread/task
+and invoke `/tea-insights` there, or type `/clear` and continue with
+`/tea-insights`"** to run the model and explore the results. Emphasize that
+clearing or using a new thread keeps the tool performant.
 
 **Show where the data lives (both modes, especially Auto).** The hand-off message
 must not be a black box. List and **link** the key audit-trail files, each with a
@@ -125,3 +144,7 @@ before completeness review and finalization. Record each with
 The forward `set-stage` move is hard-blocked until every expected unit is
 accounted for, and the quality-reviewer pass cannot be skipped — see the
 "Spawn accounting" section of `references/interaction-and-gates.md`.
+
+Record a spawn only while its stage is current, only for a manifest-derived
+unit, and only after its required output artifact exists. Do not reconstruct or
+backfill spawn accounting after advancing or finalizing.

@@ -21,8 +21,5 @@ load them before doing substantive work:
 - Use `python scripts/orchestrator.py` as the source of truth for state changes.
 - Build a deterministic `model.py` that is a pure function of its `--inputs` CSV.
 - Use rough dummy values from general knowledge only; do not web search for them.
-- Write dry-run figures + workbook to dummy-tagged paths (`plots-dummy/`,
-  `<project>-model-workbook-DUMMY.xlsx`) so the real run never overwrites them.
-- Emit a values-only Excel workbook (`scripts/export_workbook.py`) with the main
-  input, dashboard, intermediate outputs, and charts (needs `openpyxl`).
+- Write dry-run figures to `plots-dummy/` so the real run never overwrites them.
 - End at `model_approved`, then hand off to `tea-data`.

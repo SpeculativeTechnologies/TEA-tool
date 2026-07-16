@@ -1,7 +1,7 @@
 interface:
   display_name: "TEA Data"
   short_description: "Gather TEA evidence and finalize the inputs"
-  default_prompt: "Use $tea-data to gather citation-backed evidence and finalize the gap-free TEA model inputs, then hand off to tea-insights."
+  default_prompt: "Use $tea-data to continue the project-scoped TEA workflow: confirm the repository root and approved model, then gather citation-backed evidence and finalize the gap-free TEA model inputs."
 
 policy:
   allow_implicit_invocation: false

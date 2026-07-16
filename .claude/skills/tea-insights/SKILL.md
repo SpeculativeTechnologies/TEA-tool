@@ -44,22 +44,18 @@ The CLI is the source of truth; never hand-edit state or CSVs. Run
 
 ## 1. Run the model on the real inputs
 
-Run the approved model on the finalized `Main Input.csv` and build the workbook:
+Run the approved model on the finalized `Main Input.csv`:
 
 ```
 python "$RUN/model.py" --inputs "$RUN/Main Input.csv" \
     --outdir "$RUN/plots" --results "$RUN/model-results.json"
-python scripts/export_workbook.py --run-dir "$RUN"
 ```
 
 The real run writes to `plots/` and `model-results.json`; the dummy figures from
-`/tea-model` stay in `plots-dummy/` (they are **not** overwritten). The workbook
-step writes the viewer-friendly `<project>-model-workbook.xlsx` — a values-only
-spreadsheet (no formulas) with the main input, a dashboard, the intermediate
-outputs, and the charts, for people who prefer Excel to code.
+`/tea-model` stay in `plots-dummy/` (they are **not** overwritten).
 
-Present the **real** plots, the headline metric(s), the charts, the workbook, and
-the key sources/assumptions. **If the run has benchmarks, present the validation
+Present the **real** plots, the headline metric(s), and the key
+sources/assumptions. **If the run has benchmarks, present the validation
 comparison explicitly** — computed value vs. researched literature benchmark (with
 its source) for each target, from `results["validation"]`. Flag any benchmark cell
 that ended up **estimated rather than literature-sourced** (quality tag `E`/`U`):
@@ -138,8 +134,6 @@ The final message must not be a black box. List and **link** the key files, each
 with a one-line "what's in here", so the user can drill into any number:
 
 - `plots/` and `model-results.json` — the real charts and the headline numbers.
-- `<project>-model-workbook.xlsx` — the spreadsheet view of inputs, dashboard,
-  intermediate outputs, and charts.
 - `final/Main Input.csv` — the model inputs, one row per cell (value, units, tag).
 - `Sources.csv` — every source with its URL and page/table reference.
 - `Audit_final_consolidated.csv` — full provenance: every candidate value, which
@@ -157,7 +151,7 @@ every **`U` (unbacked) estimate** cell, and any source slice recorded as
 
 ## Dependency + subagents
 
-The model layer needs **matplotlib** (`pip install matplotlib`) for charts and
-**openpyxl** (`pip install openpyxl`) for the Excel workbook. Reuse read-only
-subagents only as needed (e.g. a `tea-materials-analyst` to re-read large supplied
-materials); you serialize all canonical writes through the CLI and phase scripts.
+The model layer needs **matplotlib** (`pip install matplotlib`) for charts. Reuse
+read-only subagents only as needed (e.g. a `tea-materials-analyst` to re-read large
+supplied materials); you serialize all canonical writes through the CLI and phase
+scripts.

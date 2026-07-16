@@ -168,6 +168,16 @@ class SharedInputTests(unittest.TestCase):
                 load_project(root)
             self.assertIn("unknown parameter", str(ctx.exception))
 
+    def test_shared_inputs_cannot_prepopulate_estimates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            rows = read_rows(root / "shared-inputs.csv")
+            rows[0]["quality_tag"] = "E"
+            write_rows(root / "shared-inputs.csv", SHARED_INPUTS_FIELDNAMES, rows)
+            with self.assertRaisesRegex(ComparisonProjectError, "Phase 6 estimation"):
+                load_project(root)
+
     def test_shared_cell_normalizes_selects_and_finalizes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

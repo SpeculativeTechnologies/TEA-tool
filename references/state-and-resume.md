@@ -13,6 +13,7 @@ runs/<project>/
   issues.json               # actionable blockers + decisions only
   decision-log.md           # readable rationale
   intake-summary.md         # the approved understanding check
+  scope-summary.md          # concise human-readable review companion (/tea-scope)
   model-requirements.md     # desired outputs -> required inputs (project-level)
   model.py                  # bespoke runnable model (approved + hashed; /tea-model)
   model/dummy-inputs.csv    # quick dummy values for the dry run (/tea-model)
@@ -21,8 +22,6 @@ runs/<project>/
   plots/                    # real rendered figures (/tea-insights)
   model-results-DUMMY.json  # dummy-run outputs (/tea-model)
   model-results.json        # real-run headline outputs (/tea-insights)
-  <project>-model-workbook-DUMMY.xlsx  # values-only Excel view of the dummy run (/tea-model)
-  <project>-model-workbook.xlsx        # values-only Excel view of the real run (/tea-insights)
   user-inputs.csv           # analyst values mapped to schema cells
   user-sources.csv          # analyst/source registry (source_role may be analyst)
   provided-materials.json   # registered supplied materials
@@ -80,7 +79,8 @@ and relevant issue ids:
 
 ```
 python scripts/orchestrator.py approve --run-dir RUN --type starting_documents \
-    --artifact scope.md --artifact data-requirements.md --artifact model-requirements.md
+    --artifact scope-summary.md --artifact scope.md --artifact process-flow.md \
+    --artifact data-requirements.md --artifact model-requirements.md
 python scripts/orchestrator.py approve --run-dir RUN --type model_approved \
     --artifact model.py --artifact viz-spec.md
 ```
@@ -104,7 +104,8 @@ Snapshot only meaningful semantic boundaries (not routine CSV churn):
 
 ```
 python scripts/orchestrator.py snapshot --run-dir RUN --label starting-documents \
-    --artifact scope.md --artifact data-requirements.md --artifact model-requirements.md
+    --artifact scope-summary.md --artifact scope.md --artifact process-flow.md \
+    --artifact data-requirements.md --artifact model-requirements.md
 ```
 
 → `history/<timestamp>-starting-documents/`. Other labels: `model-approved`,
