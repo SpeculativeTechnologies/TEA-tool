@@ -13,3 +13,12 @@ runs/
 *-model-workbook*.xlsx
 *-redesigned-workbook*.xlsx
 outputs/019f6b40-c179-74e3-b9f1-18cc9ce21a9f/
+
+# Local assistant settings and generated working artifacts.
+.claude/settings.local.json
+tmp/
+output/
+
+# Local user-session exports and archives.
+Eileen feedback and runs/session-export-*/
+Eileen feedback and runs/*.zip

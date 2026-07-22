@@ -173,6 +173,11 @@ def _extraction_requirements(run_dir: Path) -> dict:
             unit = f"{option_id}:{entry_id}" if option_id else entry_id
             raw_output = str(entry.get("output_json") or "").strip()
             output = Path(raw_output) if raw_output else None
+            if output is not None and not output.is_absolute():
+                try:
+                    output = output.relative_to(run_dir)
+                except ValueError:
+                    pass
             if option_id and output is not None and not output.is_absolute():
                 output = root / "extractions" / output.name
             requirements.append(
