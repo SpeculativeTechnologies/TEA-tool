@@ -19,7 +19,13 @@ load them before doing substantive work:
 
 - Invoke explicitly only. Do not self-trigger on general TEA questions.
 - Gate-check for `model_approved` before beginning acquisition.
+- When acquisition begins or resumes, explain the project's A/B/C/D/E/U
+  data-quality labels in plain language in the first response, including that
+  they describe evidence basis rather than guaranteed accuracy.
 - Ask the user to choose Guided vs. Hands-off mode here, then lock it.
+- In that mode-choice message, warn once that screened public sources will be
+  saved into the run folder. Hands-off authorizes noninteractive downloads for
+  the run; never use browser download popups, and never execute downloaded files.
 - Treat research-first as invariant, not a mode: never offer estimation-led
   shortcuts, and estimate only residual blanks after the evidence pipeline.
 - Use `python scripts/orchestrator.py` as the source of truth for state changes.

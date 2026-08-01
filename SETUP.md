@@ -134,7 +134,9 @@ required numeric cell. Choose one of these modes when asked:
 - **Guided** - pauses for consequential source, assumption, and estimation
   decisions. Recommended for a first run.
 - **Hands-off** - resolves downstream gates and records its assumptions for
-  later review.
+  later review. It also authorizes the tool to save screened public source files
+  into the run folder without browser download popups or per-file confirmation;
+  the files are retained as evidence and never executed.
 
 Tell the skill about trusted values early. For example:
 

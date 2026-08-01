@@ -20,6 +20,14 @@ stage artifacts. Do not pause for ordinary ambiguity.
   A visible title, citation, or abstract is not sufficient. Search specifically
   for open-access versions and repository copies before rejecting a promising
   source.
+- The user was warned about source downloads when Hands-off mode was locked.
+  Treat that choice as authorization to retrieve screened public sources into
+  the run folder without per-file confirmation. Use noninteractive HTTP
+  retrieval (`scripts/download_sources.py`); never click a browser download
+  control, open a Save As dialog, or execute downloaded content.
+- If a public source cannot be retrieved noninteractively, record the failure,
+  seek an open alternate representation, and otherwise route the gap to
+  estimation. Do not hand the download back to the user.
 - For normalization flags, choose `agent calc` when a traceable calculation is
   possible; otherwise reject the row and let Phase 6 estimate the cell.
 - For disagreements, accept credible rows that remain plausible and reject

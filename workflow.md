@@ -151,14 +151,24 @@ Review each candidate before downloading:
 - Is the quality estimate credible?
 - For `REF` reference values, is the query context-free?
 
-Download approved files into `$RUN/master list sources/`. Do not register
-undownloaded candidates.
+Retrieve approved files noninteractively into `$RUN/master list sources/`. Do
+not register candidates that could not be materialized. Never use a browser
+download button or GUI Save As dialog:
+
+```powershell
+python scripts/download_sources.py --schema "$RUN/tea-schema.json" `
+    --input "$RUN/search-history/master-list.json" `
+    --output-dir "$RUN/master list sources" `
+    --approved-source-keys SOURCE_KEY_1,SOURCE_KEY_2
+```
 
 In Auto mode, the Auto Gate Agent performs this screening, records every
 approve/reject decision in `$RUN/auto-run-log.md`, and continues immediately.
 It approves only sources whose relevant evidence is openly inspectable; if a
 publisher page is restricted, it first looks for a legitimate open repository
-or author copy.
+or author copy. The one-time Hands-off notice and locked mode authorize these
+ordinary public-source downloads; do not ask again for every source. Downloaded
+files are evidence only and must never be executed.
 
 ### 1.3 Normalize Filenames
 
@@ -213,10 +223,20 @@ Review each gap-fill candidate:
 - Does `field_coverage` list only the target entity or `REF`?
 - Are residual gaps documented instead of filled with weak guesses?
 
-Download approved files into `$RUN/gap fill sources/`.
+Retrieve approved files noninteractively into `$RUN/gap fill sources/`:
+
+```powershell
+python scripts/download_sources.py --schema "$RUN/tea-schema.json" `
+    --input "$RUN/search-history/gap-fill-ENTITY.json" `
+    --output-dir "$RUN/gap fill sources" --mode gap --entity ENTITY `
+    --uncovered-parameters parameter_a,parameter_b `
+    --approved-source-keys SOURCE_KEY_1,SOURCE_KEY_2
+```
 
 In Auto mode, the Auto Gate Agent performs this screening and continues
-immediately, using the same open-evidence-only rule.
+immediately, using the same open-evidence-only and noninteractive-download rules.
+If retrieval fails, record it and seek an open alternate representation; never
+fall back to a browser download popup.
 
 ### 2.3 Normalize Filenames
 

@@ -507,7 +507,22 @@ def cmd_set_mode(
     if lock:
         state["mode_locked"] = True
     st.write_state(run_dir, state, today=_today(today))
-    return {"execution_mode": state["execution_mode"], "mode_locked": state.get("mode_locked", False)}
+    result = {
+        "execution_mode": state["execution_mode"],
+        "mode_locked": state.get("mode_locked", False),
+    }
+    if mode == "auto":
+        result["source_download_policy"] = {
+            "authorized": bool(state.get("mode_locked")),
+            "method": "noninteractive_http",
+            "destination": "run-local source folders",
+            "files_are_executed": False,
+            "notice": (
+                "Hands-off mode may download screened public research sources into the run "
+                "folder without per-file browser dialogs. Downloaded content is never executed."
+            ),
+        }
+    return result
 
 
 def cmd_snapshot(

@@ -1,8 +1,8 @@
 """Normalize approved source filenames from a search candidate JSON.
 
-The search agents emit candidate JSON only. After the analyst reviews candidates
-and downloads accepted source files to ``master list sources/`` or
-``gap fill sources/``, run this helper to match browser-provided filenames to
+The search agents emit candidate JSON only. After the gate reviews candidates
+and accepted source files are materialized to ``master list sources/`` or
+``gap fill sources/``, run this helper to match legacy or supplied filenames to
 candidate metadata and rename/copy them to:
 
     {entity_or_chain}_{source_key}.{ext}
@@ -77,7 +77,7 @@ def rename_sources(
     min_score: int = 55,
     max_pages: int = 6,
 ) -> dict[str, object]:
-    """Match downloaded source files and optionally normalize filenames."""
+    """Match materialized source files and optionally normalize filenames."""
 
     schema = load_schema(schema_path)
     candidates = validate_search_file(
@@ -138,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--schema", type=Path, required=True, help="Path to tea-schema.json")
     parser.add_argument("--input", type=Path, required=True, help="Master-list or gap-fill JSON")
-    parser.add_argument("--source-dir", type=Path, required=True, help="Folder with downloaded source files")
+    parser.add_argument("--source-dir", type=Path, required=True, help="Folder with materialized source files")
     parser.add_argument("--mode", choices=("master", "gap"), default="master")
     parser.add_argument("--entity", dest="entity_id", help="Target entity id for gap mode")
     parser.add_argument(

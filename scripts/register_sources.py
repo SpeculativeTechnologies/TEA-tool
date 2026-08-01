@@ -1,6 +1,6 @@
 """Register approved search candidates in Sources.csv.
 
-Rows are appended only after the analyst has approved/downloaded a source and
+Rows are appended only after the gate has approved/materialized a source and
 ``rename_sources.py`` (or manual review) has left a file whose stem is either
 ``source_key`` or ends with ``_{source_key}``. Candidate JSON entries without a
 matched file remain search history and are not registered.

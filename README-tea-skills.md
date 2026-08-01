@@ -41,8 +41,11 @@ with full source and audit trails, and finalizes a gap-free input set (every cel
 gets exactly one numeric value) before handing off. Best prompted by running
 `/tea-data` and choosing your mode when asked: **Guided** (default; it pauses for
 consequential judgments) or **Hands-off** (it resolves gates itself and documents
-every assumption). If you already have trusted numbers, say so early so they're
-pinned as fixed inputs and redundant research is skipped.
+every assumption). The mode prompt warns once that screened public sources will
+be saved into the run folder; Hands-off authorizes those noninteractive downloads
+for the run, so there are no browser download/save popups or per-file prompts.
+Downloaded sources are never executed. If you already have trusted numbers, say
+so early so they're pinned as fixed inputs and redundant research is skipped.
 
 > Example: `/tea-data - run it Guided; use our contracted electricity price of $0.06/kWh as a fixed input.`
 

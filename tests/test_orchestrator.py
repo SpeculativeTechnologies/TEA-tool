@@ -211,6 +211,11 @@ class ApprovalTests(unittest.TestCase):
             locked = orch.cmd_set_mode(run_dir, mode="auto", lock=True, today=DATE)
             self.assertEqual(locked["execution_mode"], "auto")
             self.assertTrue(locked["mode_locked"])
+            self.assertTrue(locked["source_download_policy"]["authorized"])
+            self.assertEqual(
+                locked["source_download_policy"]["method"], "noninteractive_http"
+            )
+            self.assertFalse(locked["source_download_policy"]["files_are_executed"])
             self.assertTrue(orch.cmd_status(run_dir)["mode_locked"])
 
             # Re-setting the same locked mode is idempotent.

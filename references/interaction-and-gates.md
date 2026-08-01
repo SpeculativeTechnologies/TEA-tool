@@ -55,6 +55,13 @@ Auto is an interaction policy, not permission to skip work. In Hands-off mode,
 resolve gates without the user while preserving the same research-first stage
 sequence and provenance requirements as Guided mode.
 
+The mode-choice message is also the one-time source-download notice. Tell the
+user that the research workflow saves screened public source copies inside the
+run folder for extraction and audit, retrieves them noninteractively without
+browser download/save popups, and never executes them. Choosing Hands-off is
+authorization for those ordinary downloads throughout that run; do not request
+approval again for every file.
+
 ## Guided mode — decision cards
 
 At a gate, show a compact card:
@@ -88,7 +95,11 @@ to interrupt. Still pause for the four shared pause conditions above.
 - Fan out shared and option-specific searches as appropriate.
 - Present **exactly one approval batch** containing shared and all
   option-specific sources, labeled by coverage.
-- For open sources, download into `source-staging/` before Guided approval.
+- Retrieve open sources with `scripts/download_sources.py` (or an equivalent
+  noninteractive HTTP request), never a browser download button or GUI Save As
+  flow. For Guided mode, put provisional copies in `source-staging/` before the
+  approval batch; for Hands-off, write Auto-approved copies directly to the
+  relevant canonical source folder.
 - Only approved files enter canonical source folders and `Sources.csv`.
 - Rejected staged files stay ignored or are removed safely. A rejection does not
   auto-trigger another search; follow normal gap-fill / completeness / estimation
@@ -98,7 +109,10 @@ Guided, closed/login-gated sources: provide links and explain what to obtain;
 retrieval is optional. If asked, fan out a focused open-access substitution
 search. If no credible substitute exists, leave the cell empty until estimation
 or user supply. Hands-off: do not ask the user to retrieve closed sources; search
-for the best open substitute; if none exists, proceed to estimation.
+for the best open substitute; if none exists, proceed to estimation. If an open
+source rejects noninteractive retrieval, record the error and look for a public
+repository, dataset export, or alternate representation. Do not fall back to a
+browser popup or ask the user to click through a download.
 
 Extractors read approved source files directly, PDFs included (the source path is
 authoritative; long PDFs are paged through with the Read `pages` range). Never

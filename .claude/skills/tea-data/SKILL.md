@@ -38,12 +38,42 @@ The CLI is the source of truth; never hand-edit state or CSVs. Run
   Emphasize that clearing or using a new thread keeps the tool performant.
 - Otherwise resume or begin acquisition.
 
+When acquisition will begin or resume (the last branch above), use the **first
+user-facing response after the gate check** to briefly explain the data-quality
+labels. Use any project-specific definitions in the approved data requirements;
+otherwise use this default plain-language rubric:
+
+- **A** — strongest: peer-reviewed or audited primary measurements that fit the
+  relevant scale and boundary.
+- **B** — authoritative institutional evidence, such as government, standards,
+  research-institute, or major industry-association reports and datasets.
+- **C** — reputable secondary evidence or a published modeled value.
+- **D** — a weaker but still traceable engineering fallback.
+- **E** — an estimate derived from cited evidence rather than a value reported
+  directly for the exact model input.
+- **U** — an unbacked estimate used only when no defensible source-backed value
+  can be built; flag it for the user to verify.
+
+Tell the user that the label describes the value's evidence basis, not a
+guarantee of accuracy; the workflow prefers A/B evidence and gives extra
+scrutiny to D/E/U values. Keep this orientation concise. If no mode is locked,
+put it in the same response as the Guided vs. Hands-off question; on resume,
+put it before the brief resume update instead.
+
 ## 1. Choose the mode (only here)
 
 Ask the user, in novice language, how to run the data hunt — **Guided**
 (`auto_with_human_gates`, default; pauses for consequential judgments) or
 **Hands-off** (`auto`; resolves downstream gates and documents assumptions) — then
 set and lock it:
+
+In the same mode-choice message, give this one-time download notice in plain
+language: the data hunt saves copies of screened public research sources inside
+the run folder so their evidence can be extracted and audited; downloads happen
+noninteractively, no browser download/save popups are used, and downloaded files
+are treated as inert evidence and never executed. Explain that choosing
+Hands-off authorizes these ordinary public-source downloads for the rest of the
+run, without a confirmation per file. Do not repeat the notice at every source.
 
 ```
 python scripts/orchestrator.py set-mode --run-dir RUN \
@@ -52,6 +82,14 @@ python scripts/orchestrator.py set-mode --run-dir RUN \
 
 The mode is immutable once locked (changing it requires a new run) and governs
 only the gate behavior in the stages below.
+
+For source retrieval in either mode, use `scripts/download_sources.py` or an
+equivalent noninteractive HTTP fetch into the run folder. Never click a browser
+download control, invoke a GUI Save As flow, or ask the user to operate a
+download popup. A runtime-enforced network permission may still need to be
+honored, but it is not a source-by-source workflow gate. If direct retrieval
+fails, record the failure and seek an open alternate representation; do not fall
+back to an interactive browser download.
 
 **Evidence depth is not a mode or a user choice.** Guided vs. Hands-off changes
 who resolves gates, never whether the evidence stages run. Do not ask how much

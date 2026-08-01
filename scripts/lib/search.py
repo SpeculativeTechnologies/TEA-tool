@@ -1,7 +1,7 @@
 """Search-lane helpers for candidate JSON, coverage validation, and files.
 
-T3 keeps search outputs as candidate JSON until the analyst downloads and
-approves source files. This module is the deterministic guardrail around those
+T3 keeps search outputs as candidate JSON until the gate approves and
+materializes source files. This module is the deterministic guardrail around those
 LLM artifacts: every claimed ``field_coverage`` cell must resolve through the
 config-driven schema, and every reference-value sub-query must stay
 context-free instead of leaking the TEA/system context into a commodity search.
@@ -114,7 +114,7 @@ class Candidate:
 
 @dataclass(frozen=True)
 class FileProfile:
-    """Searchable representation of a downloaded source file."""
+    """Searchable representation of a materialized source file."""
 
     path: Path
     text: str
@@ -700,7 +700,7 @@ def best_match_for_file(
 
 
 def discover_files(source_dir: str | Path) -> list[Path]:
-    """List supported downloaded source files in a directory."""
+    """List supported materialized source files in a directory."""
 
     source_dir = Path(source_dir)
     if not source_dir.is_dir():
