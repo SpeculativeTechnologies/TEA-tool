@@ -358,8 +358,8 @@ def _manifest_markdown(
             "## Inputs Finalized",
             "",
             "Inputs are finalized: one finite numeric value per schema cell. A model can "
-            "now be run on `Main Input.csv` — the `/tea-model` and `/tea-data` skills build "
-            "and run one, or run your own.",
+            "now be run on `Main Input.csv` — `/tea-model` builds the model and "
+            "`/tea-insights` runs it on finalized inputs, or run your own.",
             "",
         ]
     )

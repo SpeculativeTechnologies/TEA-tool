@@ -3,7 +3,8 @@
 This is the contract between the Stage 0 LLM front-end (which *emits*
 `tea-schema.json`) and the deterministic back-end (every script, which *reads*
 it). No downstream script contains domain constants — entities, parameters,
-conventions, and the functional unit all come from here. See plan.md §2/§4.
+conventions, and the functional unit all come from here. The original design
+is preserved in docs/archive/legacy-plans/plan.md §2/§4.
 
 Public API
 ----------
@@ -15,7 +16,7 @@ Public API
   comparable rubric, derived convention files, run defaults).
 - ``SchemaError`` — raised by ``load_schema`` when a config has hard errors.
 
-Validation is layered (see plan.md §4 and the JSON Schema header):
+Validation is layered (see the JSON Schema header):
 
 * **Structural** — types, enums, required core keys, ``additionalProperties``.
   Enforced against ``templates/tea-schema.schema.json`` via the ``jsonschema``
@@ -26,7 +27,7 @@ Validation is layered (see plan.md §4 and the JSON Schema header):
   ``INTENSITY`` parameter declaring its numerator units; a comparables-using
   entity having a rubric). These surface as hard ``errors`` (referential
   integrity) or analyst-facing ``open_questions`` (ambiguity that Stage 0 must
-  resolve rather than silently default — see TASKS.md T1 acceptance).
+  resolve rather than silently default).
 
 Open questions are *not* load failures: a config can be structurally valid yet
 carry open questions. ``load_schema`` raises only on ``errors``; the report
@@ -55,7 +56,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 #: Reserved id for the synthetic global entity that carries reference-value
-#: rows (D8, plan.md §12). It is never declared in ``entities``.
+#: rows. It is never declared in ``entities``.
 GLOBAL_ENTITY_ID = "REF"
 
 RULE_TYPES = frozenset(
@@ -67,7 +68,7 @@ PARAMETER_SCOPES = frozenset({"global", "entity"})
 INTENSITY_DENOMINATORS = frozenset({"functional_unit", "entity_output"})
 EXECUTION_MODES = frozenset({"auto_with_human_gates", "auto"})
 
-#: Carried-forward Vicky TEA defaults (plan.md §13 item 4); overridable via the
+#: Original pipeline defaults; overridable via the
 #: config's ``defaults`` block.
 DEFAULT_MASTER_LIST_CAP = 15
 DEFAULT_GAP_FILL_CAP = 5
@@ -554,7 +555,7 @@ def _semantic(data: dict, report: ValidationReport) -> None:
                 )
 
         # Units completeness — ambiguity becomes an open question, never a
-        # silent default (TASKS.md T1 acceptance).
+        # silent default.
         if rule == "INTENSITY" and not _nonempty_str(p.get("numerator_units")):
             report.open_questions.append(
                 OpenQuestion(
@@ -975,7 +976,7 @@ class Schema:
     def required_convention_files(self) -> list[str]:
         """Concrete ``conventions/*.csv`` files implied by the rule-types in use.
 
-        Stage 0 scaffolds exactly these (D4). The mapping mirrors plan.md §5:
+        Stage 0 scaffolds exactly these. The mapping follows each rule type:
         MONETARY -> currency-rates + the chosen inflation index; CAPEX ->
         currency-rates + scaling-exponents (no escalation at normalize time);
         INTENSITY/RATE -> unit-conversions.

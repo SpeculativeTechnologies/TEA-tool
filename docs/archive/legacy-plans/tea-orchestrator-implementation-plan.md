@@ -1,5 +1,11 @@
 # New-User TEA Orchestrator — V1 Implementation Plan
 
+> **Superseded implementation plan.** This document describes the earlier
+> single-skill, inputs-only design. The shipping workflow uses `/tea-scope`,
+> `/tea-model`, `/tea-data`, and `/tea-insights`, including model construction
+> and execution. See [SETUP.md](../../../SETUP.md) and
+> [README-tea-skills.md](../../../README-tea-skills.md) for current guidance.
+
 ## 1. Decision
 
 Build V1 as an explicitly invoked, repo-scoped Codex skill:

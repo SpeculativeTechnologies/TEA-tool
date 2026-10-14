@@ -17,7 +17,7 @@ Each entity has a scope frame used by extraction and scope-fit review.
 
 ## Parameter catalog
 
-| Parameter ID | Label | Rule type | Applies to | First class | Notes |
+| Parameter ID | Label | Rule type | Applies to | search_targetable | Notes |
 |---|---|---|---|---|---|
 | specific_capex | Specific CapEx | CAPEX | all | true | Capital cost per annual tonne of entity output. |
 | scaling_exponent | Scaling exponent | PASSTHROUGH | all | false | Convention value, not searched per cell. |

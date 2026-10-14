@@ -44,7 +44,7 @@ Each coverage target contains:
     {
       "id": "parameter id",
       "label": "human label",
-      "rule_type": "MONETARY|INTENSITY|FRACTION|RATE|CAPEX|PASSTHROUGH|JSON|TEXT",
+      "rule_type": "MONETARY|INTENSITY|FRACTION|RATE|CAPEX|PASSTHROUGH",
       "units": "optional source-unit hint",
       "numerator_units": "optional intensity numerator hint",
       "canonical_unit": "optional reference-value target unit",
@@ -183,8 +183,7 @@ Return JSON only:
 
 - Every requested cell appears exactly once unless the manifest explicitly asks
   for multiple rows for the same cell from different source tables.
-- Every non-null row has `page_ref`, `raw_units` unless the rule type is `TEXT`
-  or `JSON`, and a configured quality tag.
+- Every non-null row has `page_ref`, `raw_units`, and a configured quality tag.
 - Every `hold` has a self-contained `analyst_question`.
 - Every `reject` is blanked and explains the out-of-scope basis.
 - No math, normalization, or engineering defaults were added.

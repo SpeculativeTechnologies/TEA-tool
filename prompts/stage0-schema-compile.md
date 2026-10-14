@@ -4,8 +4,9 @@ Run **once** at the start of every TEA run, before any data gathering. Reads
 the two human-authored input documents and compiles the machine-readable
 contract (`tea-schema.json`) that every deterministic script downstream reads.
 This is the only step that turns prose into the config; get it right and the
-rest of the pipeline is config-driven. See [plan.md](../plan.md) §6 (Phase 0.1)
-and the decision log (D2, D4, D8, D13).
+rest of the pipeline is config-driven. See [workflow.md](../workflow.md)
+Phase 0.1 for the current execution contract. The original design decisions
+are preserved in [the archived plan](../docs/archive/legacy-plans/plan.md).
 
 ---
 
@@ -79,7 +80,7 @@ intent is unclear.
 
 `tea-schema.json` validates against
 [`templates/tea-schema.schema.json`](../templates/tea-schema.schema.json).
-Authoritative shape is that file; this is the working reference (plan.md §4):
+Authoritative shape is that file; this is the working reference:
 
 ```jsonc
 {

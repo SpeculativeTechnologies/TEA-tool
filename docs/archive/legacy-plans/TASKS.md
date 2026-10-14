@@ -1,12 +1,16 @@
 # General TEA Tool — Task Board
 
+> **Completed historical task board.** These tasks built the original input
+> pipeline. They are preserved for project history and are not instructions
+> for new work. See [SETUP.md](../../../SETUP.md) for the current workflow.
+
 Pickup-able work units for the build described in [`plan.md`](plan.md). Each
 task is self-contained: an agent should be able to claim one, read the
 referenced material, and deliver without further context.
 
 **Conventions for every task**
-- Build target: `C:\Users\danie\Speculative Technologies\General TEA tool\`.
-- Reference (read, do **not** edit): `..\Vicky TEA\` — its `plan.md`,
+- Build target: the General TEA Tool repository root.
+- Original reference: the separate Vicky TEA project — its `plan.md`,
   `workflow.md`, `prompts/`, `scripts/`, `conventions/`, and `Run 2/`.
 - **Fresh rewrite** (decision D16): treat Vicky TEA code as reference, not a
   base to copy. All new scripts are **config-driven** — they read

@@ -1,17 +1,23 @@
 # General TEA Tool — Design & Build Plan
 
+> **Historical design document.** This plan predates the four-skill workflow
+> and is preserved for design history, not current operating instructions.
+> Start with [SETUP.md](../../../SETUP.md) and
+> [README-tea-skills.md](../../../README-tea-skills.md) for the current tool.
+
 A reusable, config-driven version of the Vicky TEA data-research-and-extraction
 workflow that works for **any** techno-economic analysis — industrial or not —
 starting from two human-authored input documents and ending with a fully
 populated, model-ready input set that the analyst feeds into their own
 pre-built model.
 
-> **Status:** design frozen after a `/grill-me` session (16 decisions, logged
-> in §1). Next step is implementation by other agents — see the task breakdown
-> in §11 / [`TASKS.md`](TASKS.md).
+> **Original status:** design frozen after a `/grill-me` session (16 decisions,
+> logged in §1). The implementation task breakdown is preserved in §11 and
+> [`TASKS.md`](TASKS.md); those tasks are complete.
 >
 > **Source material:** this generalizes the Ti-6Al-4V workflow in
-> `../Vicky TEA/` (its `plan.md`, `workflow.md`, `TEA Framework.md`, `prompts/`,
+> the separate Vicky TEA project (its `plan.md`, `workflow.md`,
+> `TEA Framework.md`, `prompts/`,
 > `scripts/`, `conventions/`, and the `Run 2/` artifacts). That folder is the
 > **reference**, not the build target — we are doing a fresh rewrite (§1, D16).
 

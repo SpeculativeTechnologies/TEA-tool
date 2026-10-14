@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://speculative-technologies.local/general-tea-tool/tea-schema.schema.json",
   "title": "General TEA Tool — tea-schema.json",
-  "description": "Machine-readable contract that Stage 0.1 (LLM compile) emits and every deterministic script reads. No script contains domain constants; they all dispatch off this config. See plan.md §4. This JSON Schema enforces STRUCTURE (types, enums, required core keys). Cross-reference and completeness checks (e.g. applies_to resolving to a real entity, an INTENSITY parameter declaring its numerator units) are layered on top by scripts/lib/schema.py, which surfaces them as hard errors or analyst-facing open questions rather than silent defaults.",
+  "description": "Machine-readable contract that Stage 0.1 (LLM compile) emits and every deterministic script reads. No script contains domain constants; they all dispatch off this config. This JSON Schema enforces STRUCTURE (types, enums, required core keys). Cross-reference and completeness checks (e.g. applies_to resolving to a real entity, an INTENSITY parameter declaring its numerator units) are layered on top by scripts/lib/schema.py, which surfaces them as hard errors or analyst-facing open questions rather than silent defaults.",
   "type": "object",
   "required": [
     "tea_id",
@@ -200,7 +200,7 @@
         },
         "label": { "type": "string", "minLength": 1 },
         "rule_type": {
-          "description": "Normalization rule-type dispatched by normalize.py (D6, plan.md §5).",
+          "description": "Normalization rule-type dispatched by normalize.py. Model-input parameters must be numeric; scripts/lib/schema.py rejects JSON and TEXT parameters.",
           "type": "string",
           "enum": ["MONETARY", "INTENSITY", "FRACTION", "RATE", "CAPEX", "PASSTHROUGH", "JSON", "TEXT"]
         },

@@ -1,17 +1,16 @@
 # General TEA Framework
 
-This framework describes how to express a techno-economic analysis so the
-General TEA Tool can research, extract, normalize, consolidate, and hand off
-model-ready inputs. It is intentionally narrower than a full TEA methodology:
-the analyst owns the model and the economic interpretation; the tool owns the
-input-population pipeline.
+This framework describes the General TEA Tool's input-population pipeline:
+research, extraction, normalization, consolidation, and hand-off of model-ready
+inputs. The complete four-skill workflow also defines the scope, builds the
+model, and runs it to explore economic results; see `README-tea-skills.md`.
 
-## Boundary Of The Tool
+## Boundary Of The Input Pipeline
 
-The tool starts after the analyst has a model shape in mind and can specify the
-data it needs. It ends when `Main Input.csv`, `Reference Values.csv`, and a run
-manifest are ready. It does not construct a process model, financial model,
-scenario engine, or back-cast.
+The input pipeline starts after the model shape and its data requirements are
+approved. It ends when `Main Input.csv`, `Reference Values.csv`, and a run
+manifest are ready. `/tea-model` constructs the model before acquisition;
+`/tea-insights` runs it and checks benchmark targets after finalization.
 
 One run represents one system or configuration. Comparisons across systems are
 handled by a comparison wrapper containing separate option runs, shared raw
@@ -53,7 +52,7 @@ the configured currency and base year.
 scale, basis year, and review fields. They are not escalated during ordinary
 normalization.
 
-`PASSTHROUGH`, `JSON`, and `TEXT` parameters carry values or notes without
+`PASSTHROUGH` parameters carry numeric values without
 numeric normalization.
 
 If a parameter could fit more than one rule type, the data-requirements document
@@ -139,5 +138,5 @@ The final artifacts are:
 - `run-manifest.md`: coverage, quality distribution, source counts, shared
   inputs, residual gaps, and validation targets.
 
-Validation targets are surfaced for the analyst's convenience. The tool does
-not run the model or judge whether the TEA result passes those targets.
+Validation targets are recorded in the input hand-off for `/tea-insights`,
+which runs the approved model and compares the results with those targets.

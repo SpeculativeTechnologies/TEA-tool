@@ -12,7 +12,7 @@
 
 ## Parameter catalog
 
-| Parameter ID | Label | Rule type | Applies to | First class | Notes |
+| Parameter ID | Label | Rule type | Applies to | search_targetable | Notes |
 |---|---|---|---|---|---|
 | monthly_cost | Monthly cost | MONETARY | all | true | Amortized monthly cost for the cost center. |
 | power_draw | Power draw | INTENSITY | compute_hardware, power_cooling | true | kWh per 1M tokens. |

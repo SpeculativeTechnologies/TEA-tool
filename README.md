@@ -38,6 +38,7 @@ inputs, and run state while the user works in plain language.
 - `references/` - detailed workflow guidance loaded by the skills.
 - `runs/` - local run folders and generated outputs (ignored by Git).
 - `tests/` - automated tests for the pipeline.
+- `docs/archive/legacy-plans/` - historical plans and the completed task board.
 
 ## Development
 

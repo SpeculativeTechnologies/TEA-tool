@@ -2,7 +2,7 @@
 """Smoke + convention check for a run's bespoke ``model.py`` (/tea-model).
 
 Confirms the model honors the contract in ``references/model-building.md`` so the
-same file can be re-run on real data by ``/tea-data``:
+same file can be re-run on real data by ``/tea-insights``:
 
 - runs headless on a given inputs CSV and exits 0,
 - writes a results JSON with a non-empty ``headline`` block,

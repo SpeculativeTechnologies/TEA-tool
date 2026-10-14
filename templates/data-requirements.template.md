@@ -59,9 +59,11 @@ Allowed rule types:
 - `FRACTION`: ratio, yield, recovery, efficiency, or utilization from 0 to 1.
 - `RATE`: per-time throughput or flow.
 - `CAPEX`: capital cost carried with basis year and scale.
-- `PASSTHROUGH`: value carried without numeric transform.
-- `JSON`: structured machine data carried verbatim.
-- `TEXT`: free-form notes.
+- `PASSTHROUGH`: numeric value carried without numeric transform.
+
+Every model-input cell must resolve to one finite numeric value. Keep
+structured context and free-form notes in the starting documents and row
+notes; `JSON` and `TEXT` parameters are not supported.
 
 | parameter id | label | rule_type | applies_to | search_targetable | units | numerator_units | per | canonical_unit | basis | description |
 |---|---|---|---|---|---|---|---|---|---|---|
