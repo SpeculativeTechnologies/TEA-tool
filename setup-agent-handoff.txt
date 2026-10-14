@@ -2,7 +2,7 @@ Simple Setup Handoff
 
 1. Clone the repository:
 
-   git clone <repository-url>
+   git clone https://github.com/SpeculativeTechnologies/General-TEA-tool.git
 
 2. Open the cloned repository in your favorite coding agent.
 

@@ -23,8 +23,8 @@ is enough.
 Clone the repository:
 
 ```powershell
-git clone https://github.com/SpeculativeTechnologies/Techno-Economic-Analysis-TEA-tool.git
-cd Techno-Economic-Analysis-TEA-tool
+git clone https://github.com/SpeculativeTechnologies/General-TEA-tool.git
+cd General-TEA-tool
 ```
 
 If you receive a ZIP archive instead, extract the whole archive and confirm
