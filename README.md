@@ -1,6 +1,6 @@
-# General TEA Tool
+# TEA Tool
 
-The General TEA Tool is a domain-agnostic workflow for building a
+The TEA Tool is a domain-agnostic workflow for building a
 techno-economic analysis (TEA) from a rough idea. It helps an analyst define
 the system, build and check a model, gather citation-backed inputs, and explore
 the results.
